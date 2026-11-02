@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+  {% if notice %}<p class="empty">{{ notice }}</p>{% endif %}
   {% if day %}
     <div class="day-nav">
-      <a href="/?day={{ prev_day }}">← {{ prev_day }}</a>
+      {% if prev_day %}<a href="/?day={{ prev_day }}">← {{ prev_day }}</a>{% else %}<span></span>{% endif %}
       <h1>Matches · {{ day }}</h1>
-      <a href="/?day={{ next_day }}">{{ next_day }} →</a>
+      {% if next_day %}<a href="/?day={{ next_day }}">{{ next_day }} →</a>{% else %}<span></span>{% endif %}
     </div>
   {% endif %}
   {% for m in matches %}

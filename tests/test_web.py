@@ -28,7 +28,7 @@ def seed(db_path, jobs_scores, seen_at=NOW, draft_for=()):
 
 
 def client(db_path, now=NOW):
-    return TestClient(create_app(db_path, clock=lambda: now))
+    return TestClient(create_app(db_path, clock=lambda: now), base_url="http://localhost", headers={"HX-Request": "true"})
 
 
 def test_today_shows_matches_sorted(db_path):
@@ -121,3 +121,41 @@ def test_status_change_from_pipeline_returns_compact_card(db_path):
     seed(db_path, [(j, 80)])
     body = client(db_path).post(f"/jobs/{j.id}/status?compact=1", data={"status": "applied"}).text
     assert "compact" in body and "Fit:" not in body
+
+
+HX = {"HX-Request": "true"}
+
+
+def test_javascript_url_is_not_rendered_as_link(db_path):
+    j = make_job(1, url="javascript:alert(1)")
+    seed(db_path, [(j, 80)])
+    body = client(db_path).get("/").text
+    assert 'href="javascript:' not in body
+
+
+def test_foreign_host_header_rejected(db_path):
+    DB(db_path)
+    r = client(db_path).get("/", headers={"Host": "evil.example.com"})
+    assert r.status_code == 400
+
+
+def test_post_without_htmx_header_rejected(db_path):
+    j = make_job(1)
+    seed(db_path, [(j, 80)])
+    r = TestClient(create_app(db_path, clock=lambda: NOW), base_url="http://localhost").post(f"/jobs/{j.id}/status", data={"status": "skipped"})
+    assert r.status_code == 403
+    assert DB(db_path).status(j.id) == "new"
+
+
+@pytest.mark.parametrize("day", ["foo", "2026-13-01", "0001-01-01", "9999-12-31"])
+def test_bad_day_param_shows_page(db_path, day):
+    j = make_job(1, company="Acme")
+    seed(db_path, [(j, 80)])
+    r = client(db_path).get(f"/?day={day}")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+
+
+def test_offer_button_exists(db_path):
+    j = make_job(1)
+    seed(db_path, [(j, 80)])
+    assert '"status": "offer"' in client(db_path).get("/").text

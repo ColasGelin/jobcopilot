@@ -6,7 +6,7 @@
       <h2>{{ m.job.company }} — {{ m.job.title }}</h2>
       <p class="meta">
         {% if not compact %}{{ m.job.location or "Location not stated" }}{% if m.job.remote %} · remote{% endif %}
-        · {{ m.job.salary_text or "Salary not stated" }} · {% endif %}<a href="{{ m.job.url }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>
+        · {{ m.job.salary_text or "Salary not stated" }} · {% endif %}{% if safe_url(m.job.url) %}<a href="{{ safe_url(m.job.url) }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>{% else %}{{ source_name(m.job.source) }}{% endif %}
       </p>
     </div>
     <span class="status">{{ m.status }}{% if m.job_id in follow_ups %} · Follow up{% endif %}</span>
@@ -16,7 +16,7 @@
   {% if e.gaps %}<p><b>Gaps:</b> {{ e.gaps }}</p>{% endif %}
   {% endif %}
   <div class="actions">
-    {% for s, label in [("shortlisted", "Shortlist"), ("applied", "Applied"), ("interview", "Interview"), ("rejected", "Rejected"), ("skipped", "Skip")] %}
+    {% for s, label in [("shortlisted", "Shortlist"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skip")] %}
       <button hx-post="/jobs/{{ m.job_id }}/status{% if compact %}?compact=1{% endif %}" hx-vals='{"status": "{{ s }}"}' hx-target="closest article" hx-swap="outerHTML"
               {% if m.status == s %}disabled{% endif %}>{{ label }}</button>
     {% endfor %}
