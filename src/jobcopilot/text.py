@@ -4,7 +4,7 @@ import html
 import re
 import unicodedata
 
-_TAG = re.compile(r"<[^>]+>")
+_TAG = re.compile(r"<[^>]*(?:>|$)")
 _WS = re.compile(r"\s+")
 
 

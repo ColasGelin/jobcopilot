@@ -7,3 +7,7 @@ def test_html_to_text():
 
 def test_normalize_strips_accents():
     assert normalize("  Málaga  SPAIN ") == "malaga spain"
+
+
+def test_html_to_text_drops_unclosed_trailing_tag():
+    assert html_to_text('Hello <p class="x') == "Hello"
