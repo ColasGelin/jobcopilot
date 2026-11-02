@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, time
 from pathlib import Path
 
 import typer
 
 from jobcopilot import schedule
 from jobcopilot.config import load_profile, load_settings
+from jobcopilot.daemon import loop
 from jobcopilot.db import DB
 from jobcopilot.legacy import import_legacy
 from jobcopilot.llm import ClaudeCodeClient
@@ -25,14 +26,12 @@ def main(ctx: typer.Context, home: Path = typer.Option(Path.cwd(), help="Folder 
     ctx.obj = home.expanduser().resolve()
 
 
-@app.command()
-def run(ctx: typer.Context):
-    """Collect, filter, score and draft today's jobs."""
-    home: Path = ctx.obj
+def _run(home: Path) -> int:
+    """One full run. Returns the process exit code."""
     profile_path = home / "profile.yaml"
     if not profile_path.exists():
         typer.echo(f"Missing {profile_path}. Copy profile.example.yaml to profile.yaml and edit it.")
-        raise typer.Exit(1)
+        return 1
     settings = load_settings(home / "config.yaml")
     profile = load_profile(profile_path)
     db = DB(settings.db_path)
@@ -42,11 +41,46 @@ def run(ctx: typer.Context):
         result, report = run_pipeline(settings, profile, db, sources, llm, datetime.now().astimezone())
     if result.error:
         typer.echo(f"Run failed: {result.error}")
-        raise typer.Exit(1)
+        return 1
     typer.echo(f"{result.new} new jobs, {result.kept} passed filters, {result.drafted} drafted.")
     if result.failed_sources:
         typer.echo(f"Failed sources: {', '.join(result.failed_sources)}")
     typer.echo(f"Report: {report}")
+    return 0
+
+
+@app.command()
+def run(ctx: typer.Context):
+    """Collect, filter, score and draft today's jobs."""
+    raise typer.Exit(_run(ctx.obj))
+
+
+def _parse_time(value: str) -> time:
+    try:
+        return time.fromisoformat(value)
+    except ValueError as e:
+        raise typer.BadParameter(f"expected HH:MM, got {value!r}") from e
+
+
+@app.command()
+def daemon(ctx: typer.Context, at: str = typer.Option("08:30", help="Daily run time (HH:MM, local time).")):
+    """Keep running and do one run per day at or after --at (catches up after sleep). For containers."""
+    run_at = _parse_time(at)
+    home: Path = ctx.obj
+    settings = load_settings(home / "config.yaml")
+
+    def state():
+        db = DB(settings.db_path)
+        return db.last_success_day(), db.last_attempt_at()
+
+    def run_once():
+        try:
+            _run(home)
+        except Exception as e:  # keep the daemon alive; the run row already records the error
+            typer.echo(f"Run crashed: {e!r}")
+
+    typer.echo(f"jobcopilot daemon: daily run at {run_at.strftime('%H:%M')} (checks every minute)")
+    loop(run_once, state, run_at)
 
 
 @app.command("import-legacy")

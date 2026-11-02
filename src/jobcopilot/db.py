@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Run
@@ -184,6 +184,16 @@ class DB:
                 (_iso(run.finished_at), run.fetched, run.new, run.kept, run.scored, run.drafted,
                  json.dumps(run.failed_sources), run.error, run_id),
             )
+
+    def last_success_day(self) -> date | None:
+        row = self.conn.execute(
+            "SELECT started_at FROM runs WHERE finished_at IS NOT NULL AND error IS NULL ORDER BY started_at DESC LIMIT 1"
+        ).fetchone()
+        return _dt(row[0]).date() if row else None
+
+    def last_attempt_at(self) -> datetime | None:
+        row = self.conn.execute("SELECT started_at FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()
+        return _dt(row[0]) if row else None
 
     def get_run(self, run_id: int) -> Run | None:
         row = self.conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()

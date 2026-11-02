@@ -79,3 +79,14 @@ def test_delete_jobs_removes_job_and_application(db):
     db.insert_jobs([job()], NOW)
     db.delete_jobs([job().id])
     assert db.known_urls() == set() and db.status(job().id) is None
+
+
+def test_last_success_day_and_last_attempt(db):
+    assert db.last_success_day() is None and db.last_attempt_at() is None
+    ok = db.start_run(Run(started_at=NOW))
+    db.finish_run(ok, Run(started_at=NOW, finished_at=NOW))
+    later = NOW + timedelta(days=1)
+    bad = db.start_run(Run(started_at=later))
+    db.finish_run(bad, Run(started_at=later, finished_at=later, error="logged out"))
+    assert db.last_success_day() == NOW.date()
+    assert db.last_attempt_at() == later

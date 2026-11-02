@@ -38,3 +38,22 @@ def test_cli_run_without_profile_explains(tmp_path):
     result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "run"])
     assert result.exit_code == 1
     assert "profile.yaml" in result.output
+
+
+def test_cli_daemon_starts_loop_with_schedule(monkeypatch, tmp_path):
+    from datetime import time
+    captured = {}
+
+    def fake_loop(run_once, state, run_at):
+        captured["run_at"] = run_at
+        captured["state"] = state()
+
+    monkeypatch.setattr(cli, "loop", fake_loop)
+    result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "daemon", "--at", "07:45"])
+    assert result.exit_code == 0, result.output
+    assert captured == {"run_at": time(7, 45), "state": (None, None)}
+
+
+def test_cli_daemon_rejects_bad_time(tmp_path):
+    result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "daemon", "--at", "25:00"])
+    assert result.exit_code != 0
