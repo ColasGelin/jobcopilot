@@ -46,7 +46,10 @@ class ClaudeCodeClient:
         result = payload.get("result") or ""
         if payload.get("is_error"):
             if any(h in result.lower() for h in _AUTH_HINTS):
-                raise LLMUnavailable("Claude Code is logged out: run `claude` in a terminal and /login")
+                raise LLMUnavailable(
+                    "Claude Code is logged out: run `claude` in a terminal and /login "
+                    "(in Docker: set CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token` in .env)"
+                )
             raise LLMError(f"claude error: {result[:300]}")
 
         if isinstance(payload.get("structured_output"), dict):

@@ -1,0 +1,16 @@
+.git
+.venv
+.superpowers
+data
+reports
+logs
+jobs.db
+*.pdf
+profile.yaml
+profile.md
+config.yaml
+seen.json
+tracker.tsv
+.env
+tests
+docs

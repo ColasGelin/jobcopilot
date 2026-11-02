@@ -1,0 +1,11 @@
+services:
+  jobcopilot:
+    build: .
+    image: jobcopilot:latest
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Madrid
+    env_file: .env          # CLAUDE_CODE_OAUTH_TOKEN=... (git-ignored)
+    volumes:
+      - ./data:/data        # profile.yaml, config.yaml, jobs.db, reports/, logs/
+    command: ["daemon", "--at", "08:30"]
