@@ -114,3 +114,10 @@ def test_runs_empty_state(db_path):
     DB(db_path)
     r = client(db_path).get("/runs")
     assert r.status_code == 200 and "No runs yet" in r.text
+
+
+def test_status_change_from_pipeline_returns_compact_card(db_path):
+    j = make_job(1, company="Acme")
+    seed(db_path, [(j, 80)])
+    body = client(db_path).post(f"/jobs/{j.id}/status?compact=1", data={"status": "applied"}).text
+    assert "compact" in body and "Fit:" not in body

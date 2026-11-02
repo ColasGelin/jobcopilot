@@ -58,7 +58,7 @@ def create_app(db_path: Path, clock: Callable[[], datetime] = now_local) -> Fast
         )
 
     @app.post("/jobs/{job_id}/status", response_class=HTMLResponse)
-    def set_status(request: Request, job_id: str, status: str = Form(...)):
+    def set_status(request: Request, job_id: str, status: str = Form(...), compact: bool = False):
         if status not in STATUSES:
             raise HTTPException(400, f"unknown status {status!r}")
         store = db()
@@ -66,7 +66,9 @@ def create_app(db_path: Path, clock: Callable[[], datetime] = now_local) -> Fast
             raise HTTPException(404, "unknown job")
         store.set_status(job_id, status, clock())
         return templates.TemplateResponse(
-            request, "_card.html", {"m": store.match(job_id), "follow_ups": store.follow_up_due_ids(clock())}
+            request,
+            "_card.html",
+            {"m": store.match(job_id), "follow_ups": store.follow_up_due_ids(clock()), "compact": compact},
         )
 
     @app.get("/pipeline", response_class=HTMLResponse)

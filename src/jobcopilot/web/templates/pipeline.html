@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block main_class %}wide{% endblock %}
 {% block content %}
   <h1>Pipeline</h1>
   {% if total == 0 %}
@@ -8,7 +9,7 @@
       {% for status, items in groups.items() %}
         <section>
           <h2>{{ status | capitalize }} ({{ items | length }})</h2>
-          {% for m in items %}{% include "_card.html" %}{% endfor %}
+          {% for m in items %}{% with compact=true %}{% include "_card.html" %}{% endwith %}{% else %}<p class="empty">—</p>{% endfor %}
         </section>
       {% endfor %}
     </div>

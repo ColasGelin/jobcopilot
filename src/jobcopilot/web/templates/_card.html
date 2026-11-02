@@ -1,26 +1,28 @@
 {% set e = m.evaluation %}
-<article class="card status-{{ m.status }}{% if m.job_id in follow_ups %} follow-up{% endif %}" id="job-{{ m.job_id }}">
+<article class="card{% if compact %} compact{% endif %} status-{{ m.status }}{% if m.job_id in follow_ups %} follow-up{% endif %}" id="job-{{ m.job_id }}">
   <div class="card-head">
     <span class="score {% if e.score >= 80 %}strong{% elif e.score >= 60 %}good{% else %}muted{% endif %}">{{ e.score }}</span>
     <div>
       <h2>{{ m.job.company }} — {{ m.job.title }}</h2>
       <p class="meta">
-        {{ m.job.location or "Location not stated" }}{% if m.job.remote %} · remote{% endif %}
-        · {{ m.job.salary_text or "Salary not stated" }}
-        · <a href="{{ m.job.url }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>
+        {% if not compact %}{{ m.job.location or "Location not stated" }}{% if m.job.remote %} · remote{% endif %}
+        · {{ m.job.salary_text or "Salary not stated" }} · {% endif %}<a href="{{ m.job.url }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>
       </p>
     </div>
     <span class="status">{{ m.status }}{% if m.job_id in follow_ups %} · Follow up{% endif %}</span>
   </div>
+  {% if not compact %}
   {% if e.fit_reasons %}<p><b>Fit:</b> {{ e.fit_reasons }}</p>{% endif %}
   {% if e.gaps %}<p><b>Gaps:</b> {{ e.gaps }}</p>{% endif %}
+  {% endif %}
   <div class="actions">
     {% for s, label in [("shortlisted", "Shortlist"), ("applied", "Applied"), ("interview", "Interview"), ("rejected", "Rejected"), ("skipped", "Skip")] %}
-      <button hx-post="/jobs/{{ m.job_id }}/status" hx-vals='{"status": "{{ s }}"}' hx-target="closest article" hx-swap="outerHTML"
+      <button hx-post="/jobs/{{ m.job_id }}/status{% if compact %}?compact=1{% endif %}" hx-vals='{"status": "{{ s }}"}' hx-target="closest article" hx-swap="outerHTML"
               {% if m.status == s %}disabled{% endif %}>{{ label }}</button>
     {% endfor %}
   </div>
-  {% if m.draft %}
+  {% if compact %}
+  {% elif m.draft %}
     <details>
       <summary>Drafts</summary>
       <h3>CV tweaks</h3>

@@ -16,7 +16,7 @@
       <a href="/runs" {% if active == 'runs' %}aria-current="page"{% endif %}>Runs</a>
     </nav>
   </header>
-  <main>{% block content %}{% endblock %}</main>
+  <main class="{% block main_class %}{% endblock %}">{% block content %}{% endblock %}</main>
   <script>
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-copy]");
