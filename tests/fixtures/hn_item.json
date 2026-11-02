@@ -1,0 +1,53 @@
+{
+ "id": 49922569,
+ "title": "Ask HN: Who is hiring? (October 2026)",
+ "created_at": "2026-10-01T15:02:07.000Z",
+ "children": [
+  {
+   "id": 1001,
+   "author": "x",
+   "created_at": "2026-10-01T15:05:00.000Z",
+   "parent_id": 49922569,
+   "text": "Acme AI | ML Engineer | REMOTE (EU) | Full-time<p>We build agents with Python &amp; LangGraph.</p>",
+   "type": "comment",
+   "children": [
+    {
+     "id": 2001,
+     "author": "x",
+     "created_at": "2026-10-01T15:05:00.000Z",
+     "parent_id": 49922569,
+     "text": "Nested reply | Should | Be ignored",
+     "type": "comment",
+     "children": []
+    }
+   ]
+  },
+  {
+   "id": 1002,
+   "author": "x",
+   "created_at": "2026-10-01T15:05:00.000Z",
+   "parent_id": 49922569,
+   "text": "PrairieLearn (Remote US) — Full-Stack Software Engineer — TypeScript &#x2F; Postgres<p>Details here.</p>",
+   "type": "comment",
+   "children": []
+  },
+  {
+   "id": 1003,
+   "author": "x",
+   "created_at": "2026-10-01T15:05:00.000Z",
+   "parent_id": 49922569,
+   "text": "We are hiring backend engineers in Málaga, onsite.<p>Email us.</p>",
+   "type": "comment",
+   "children": []
+  },
+  {
+   "id": 1004,
+   "author": "x",
+   "created_at": "2026-10-01T15:05:00.000Z",
+   "parent_id": 49922569,
+   "text": null,
+   "type": "comment",
+   "children": []
+  }
+ ]
+}
