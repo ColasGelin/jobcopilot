@@ -1,0 +1,19 @@
+# Copy to profile.yaml and edit. profile.yaml is git-ignored.
+hard_filters:
+  remote_regions: [Spain, EU, Europe, EMEA, Worldwide, Anywhere]
+  onsite_cities: [Málaga]
+  exclude_title_keywords: [senior, sr., staff, lead, principal, head of, director, manager]
+  exclude_text_patterns:
+    - us only
+    - us citizens
+    - must be located in the us
+    - security clearance
+    - 5+ years
+    - 7+ years
+    - 10+ years
+  min_salary_eur: 40000
+
+summary: |
+  Junior AI engineer. Python, TypeScript, LLM systems (RAG, agents, MCP),
+  FastAPI, vector databases, Docker, Kubernetes.
+  Looking for remote (EU timezones) or Málaga roles, junior to mid level.

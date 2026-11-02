@@ -1,0 +1,36 @@
+# Copy to config.yaml and edit. config.yaml is git-ignored.
+llm:
+  backend: claude_code
+  score_model: haiku
+  draft_model: sonnet
+  timeout_s: 300
+top_n: 10
+min_score: 60
+lookback_days: 14  # feeds like Remotive publish days late; dedupe prevents repeats
+max_scored_per_run: 150  # caps Claude usage; extra jobs wait for the next run
+# Applications prepared after each run: form read, CV tailored, answers drafted (Claude, up to max_per_run jobs).
+prepare: {enabled: true, min_score: 75, max_per_run: 10}
+
+sources: [remotive, remoteok, arbeitnow, hn, jobicy, himalayas, workingnomads, wwr, watchlist]
+# Add "linkedin" to sources to search LinkedIn's public listings (no login, via JobSpy, 3-7 s between requests).
+# It goes against LinkedIn's terms; the realistic risk is a temporary IP block, never your account. Example:
+# linkedin_searches: [{term: AI engineer, location: "Málaga, Spain"}, {term: LLM engineer, location: Spain}]
+# linkedin_results: 25      # per search
+# linkedin_hours_old: 48
+
+himalayas_queries: [python, AI engineer, LLM, machine learning]
+himalayas_country: Spain
+
+# Companies whose public job boards are checked every run.
+# ats: greenhouse | ashby | lever — slug is the company id in the board URL
+# (boards.greenhouse.io/<slug>, jobs.ashbyhq.com/<slug>, jobs.lever.co/<slug>).
+watchlist:
+  - {name: Example AI, ats: ashby, slug: example-ai}
+  - {name: Sample Labs, ats: greenhouse, slug: sample-labs}
+  - {name: Demo Tools, ats: lever, slug: demo-tools}
+
+# Shown on the dashboard's Companies page: great companies to check by hand
+# (their job boards can't be read automatically).
+companies_to_check:
+  - {category: AI labs, name: Example Labs, location: Remote, url: "https://example.com/careers", why: "Why this company interests you."}
+  - {category: Local, name: Sample Studio, location: Your city, why: "No careers page: check it by hand."}
