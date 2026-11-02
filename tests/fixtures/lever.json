@@ -1,0 +1,66 @@
+[
+ {
+  "additional": "",
+  "additionalPlain": "",
+  "categories": {
+   "commitment": "Remote",
+   "department": "Company",
+   "location": "Spain",
+   "team": "Company",
+   "allLocations": [
+    "Spain",
+    "Madrid",
+    "Barcelona",
+    "New York City, NY"
+   ]
+  },
+  "createdAt": 1739871740899,
+  "descriptionPlain": "Are you passionate about data and looking to make a difference? \n\nWe’re always on the lookout for talented individuals to join our growing team. If you’re interested in exploring opportunities with us but don’t see a current opening that matches your skills, we encourage you to submit an open application!\n\nBy submitting your application, you’ll be considered for any suitable positions that may arise now or in the future. We value diversity and innovation, and we’d love to hear how your unique ba",
+  "description": "<div>Are you passionate about data and looking to make a difference? </div><div><br></div><div>We’re always on the lookout for talented individuals to join our growing team. If you’re interested in exploring opportunities with us but don’t see a current opening that matches your skills, we encourage you to submit an open application!</div><div><br></div><div>By submitting your application, you’ll be considered for any suitable positions that may arise now or in the future. We value diversity and",
+  "id": "22cbcc27-89c4-4f87-87bc-6937712e7b10",
+  "text": "Open Application",
+  "country": "ES",
+  "workplaceType": "remote",
+  "opening": "",
+  "openingPlain": "",
+  "descriptionBody": "<div>Are you passionate about data and looking to make a difference? </div><div><br></div><div>We’re always on the lookout for talented individuals to join our growing team. If you’re interested in exploring opportunities with us but don’t see a current opening that matches your skills, we encourage you to submit an open application!</div><div><br></div><div>By submitting your application, you’ll be considered for any suitable positions that may arise now or in the future. We value diversity and",
+  "descriptionBodyPlain": "Are you passionate about data and looking to make a difference? \n\nWe’re always on the lookout for talented individuals to join our growing team. If you’re interested in exploring opportunities with us but don’t see a current opening that matches your skills, we encourage you to submit an open application!\n\nBy submitting your application, you’ll be considered for any suitable positions that may arise now or in the future. We value diversity and innovation, and we’d love to hear how your unique ba",
+  "hostedUrl": "https://jobs.lever.co/initech/22cbcc27-89c4-4f87-87bc-6937712e7b10",
+  "applyUrl": "https://jobs.lever.co/initech/22cbcc27-89c4-4f87-87bc-6937712e7b10/apply"
+ },
+ {
+  "additional": "",
+  "additionalPlain": "",
+  "categories": {
+   "commitment": "Remote",
+   "department": "Marketing & Growth",
+   "location": "Spain",
+   "team": "Product Marketing",
+   "allLocations": [
+    "Spain",
+    "Europe"
+   ]
+  },
+  "createdAt": 1791367237425,
+  "descriptionPlain": "About Initech\nAt Initech, we help developers and data teams take flight by unlocking the power of real-time data to build data products faster. With Initech, developers can easily ingest data from multiple sources, query it using the SQL they already know and love, and publish results as low-latency, high-concurrency APIs for their applications — all in minutes, not hours or days.\n\nOur mission is to make real-time data accessible and actionable for every developer. Initech is loved by develo",
+  "description": "<div>\n<h3>About Initech</h3>\n<p>At Initech, we help developers and data teams take flight by unlocking the power of real-time data to build data products faster. With Initech, developers can easily ingest data from multiple sources, query it using the SQL they already know and love, and publish results as low-latency, high-concurrency APIs for their applications — all in minutes, not hours or days.<br><br>Our mission is to make real-time data accessible and actionable for every developer. Tin",
+  "id": "a911ccc8-f028-4c4c-ad0f-2a392038a84c",
+  "salaryRange": {
+   "max": 120000,
+   "currency": "EUR",
+   "interval": "per-year-salary",
+   "min": 80000
+  },
+  "salaryDescription": "<div>* This role includes both cash compensation and a stock options grant. You can find our typical starting salary ranges for this role listed above. The final offer within this range will take into account several factors, including candidate experience, qualifications, skills, business needs, and geographical location.</div>\n<div>&nbsp;</div>\n<div>\n<p><strong>We also offer:</strong></p>\n<ul>\n<li>\n<p>Unlimited PTO. We will not count the days you take off, but we insist you take at least 22 days off per year. Plus, your birthday off and public holidays… but, who’s counting?</p>\n</li>\n</ul>\n<ul>\n<li>\n<p>Up to $3,000 home office setup allowance.</p>\n</li>\n<li>\n<p>Flexible remote work, with team meetups and offsites throughout the yea</p>\n</li>\n</ul>\n</div>",
+  "salaryDescriptionPlain": "* This role includes both cash compensation and a stock options grant. You can find our typical starting salary ranges for this role listed above. The final offer within this range will take into account several factors, including candidate experience, qualifications, skills, business needs, and geographical location.\n \nWe also offer:\nUnlimited PTO. We will not count the days you take off, but we insist you take at least 22 days off per year. Plus, your birthday off and public holidays… but, who’s counting?\nUp to $3,000 home office setup allowance.\nFlexible remote work, with team meetups and offsites throughout the yea\n",
+  "text": "Technical Growth Lead",
+  "country": "ES",
+  "workplaceType": "remote",
+  "opening": "",
+  "openingPlain": "",
+  "descriptionBody": "<div>\n<h3>About Initech</h3>\n<p>At Initech, we help developers and data teams take flight by unlocking the power of real-time data to build data products faster. With Initech, developers can easily ingest data from multiple sources, query it using the SQL they already know and love, and publish results as low-latency, high-concurrency APIs for their applications &mdash; all in minutes, not hours or days.<br><br>Our mission is to make real-time data accessible and actionable for every develope",
+  "descriptionBodyPlain": "About Initech\nAt Initech, we help developers and data teams take flight by unlocking the power of real-time data to build data products faster. With Initech, developers can easily ingest data from multiple sources, query it using the SQL they already know and love, and publish results as low-latency, high-concurrency APIs for their applications — all in minutes, not hours or days.\n\nOur mission is to make real-time data accessible and actionable for every developer. Initech is loved by develo",
+  "hostedUrl": "https://jobs.lever.co/initech/a911ccc8-f028-4c4c-ad0f-2a392038a84c",
+  "applyUrl": "https://jobs.lever.co/initech/a911ccc8-f028-4c4c-ad0f-2a392038a84c/apply"
+ }
+]

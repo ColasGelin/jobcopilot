@@ -20,3 +20,8 @@ def test_settings_defaults_when_missing(tmp_path):
 
 def test_default_lookback_covers_delayed_feeds(tmp_path):
     assert load_settings(tmp_path / "config.yaml").lookback_days == 14
+
+
+def test_example_config_loads_with_watchlist():
+    s = load_settings(ROOT / "config.example.yaml")
+    assert len(s.watchlist) >= 3 and "watchlist" in s.sources and s.max_scored_per_run == 150

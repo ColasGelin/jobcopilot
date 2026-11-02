@@ -7,7 +7,11 @@ from pathlib import Path
 
 from jobcopilot.models import Draft, Evaluation, Job, Run
 
-SOURCE_NAMES = {"remotive": "Remotive", "remoteok": "Remote OK", "arbeitnow": "Arbeitnow", "hn": "Hacker News", "legacy": "Imported"}
+SOURCE_NAMES = {
+    "remotive": "Remotive", "remoteok": "Remote OK", "arbeitnow": "Arbeitnow", "hn": "Hacker News", "legacy": "Imported",
+    "jobicy": "Jobicy", "himalayas": "Himalayas", "workingnomads": "Working Nomads", "wwr": "We Work Remotely",
+    "watchlist": "Company job board",
+}
 
 
 def _item(job: Job, evaluation: Evaluation, draft: Draft | None) -> list[str]:

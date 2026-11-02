@@ -14,9 +14,9 @@ from fastapi.templating import Jinja2Templates
 
 from jobcopilot.db import DB
 from jobcopilot.models import STATUSES, Run
+from jobcopilot.report import SOURCE_NAMES
 
 HERE = Path(__file__).parent
-SOURCE_NAMES = {"remotive": "Remotive", "remoteok": "Remote OK", "arbeitnow": "Arbeitnow", "hn": "Hacker News", "legacy": "Imported"}
 
 
 def duration(run: Run) -> str:

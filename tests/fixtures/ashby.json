@@ -1,0 +1,403 @@
+{
+ "jobs": [
+  {
+   "id": "49e569f0-503e-4e42-a1ba-7e63684e90d3",
+   "title": "Sr Security Engineer | Remote | Europe",
+   "department": "Engineering",
+   "team": "Security",
+   "employmentType": "FullTime",
+   "location": "Berlin Office",
+   "shouldDisplayCompensationOnJobPostings": false,
+   "secondaryLocations": [
+    {
+     "location": "Bosnia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Bosnia"
+      }
+     }
+    },
+    {
+     "location": "Norway",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Norway"
+      }
+     }
+    },
+    {
+     "location": "Estonia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Estonia"
+      }
+     }
+    },
+    {
+     "location": "Latvia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Latvia"
+      }
+     }
+    },
+    {
+     "location": "Slovenia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Slovenia"
+      }
+     }
+    },
+    {
+     "location": "Netherlands",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Netherlands"
+      }
+     }
+    },
+    {
+     "location": "Hungary",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Hungary"
+      }
+     }
+    },
+    {
+     "location": "Kosovo",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Kosovo"
+      }
+     }
+    },
+    {
+     "location": "Portugal",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Portugal"
+      }
+     }
+    },
+    {
+     "location": "Poland",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Poland"
+      }
+     }
+    },
+    {
+     "location": "Serbia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Serbia"
+      }
+     }
+    },
+    {
+     "location": "Germany",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Germany"
+      }
+     }
+    },
+    {
+     "location": "Austria",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Austria"
+      }
+     }
+    },
+    {
+     "location": "Finland",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Finland"
+      }
+     }
+    },
+    {
+     "location": "Montenegro",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Montenegro"
+      }
+     }
+    },
+    {
+     "location": "Albania",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Albania"
+      }
+     }
+    },
+    {
+     "location": "Lithuania",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Lithuania"
+      }
+     }
+    },
+    {
+     "location": "Slovakia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Slovakia"
+      }
+     }
+    },
+    {
+     "location": "Ireland",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Ireland"
+      }
+     }
+    },
+    {
+     "location": "Bulgaria",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Bulgaria"
+      }
+     }
+    },
+    {
+     "location": "Denmark",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Denmark"
+      }
+     }
+    },
+    {
+     "location": "Belgium",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Belgium"
+      }
+     }
+    },
+    {
+     "location": "Czech Republic",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Czech Republic"
+      }
+     }
+    },
+    {
+     "location": "United Kingdom",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "United Kingdom"
+      }
+     }
+    },
+    {
+     "location": "Croatia",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Croatia"
+      }
+     }
+    },
+    {
+     "location": "Spain",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Spain"
+      }
+     }
+    },
+    {
+     "location": "Greece",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Greece"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-10-13T13:48:21.468+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "Berlin-Brandenburg",
+     "addressCountry": "Germany",
+     "addressLocality": "Berlin"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/hooli/49e569f0-503e-4e42-a1ba-7e63684e90d3",
+   "applyUrl": "https://jobs.ashbyhq.com/hooli/49e569f0-503e-4e42-a1ba-7e63684e90d3/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\"><strong>The AI orchestration of your wildest imagination.</strong></p><p style=\"min-height:1.5em\">hooli is the open workflow orchestration platform built for the new era of AI. We give technical teams the freedom of code with the speed of no-code, so they can automate faster, smarter, and without limits. Backed by a fiercely inventive community and 500+ builder-approved integrations, we’re changing the way people bring systems together and scale ideas for impact.</p><p ",
+   "descriptionPlain": "The AI orchestration of your wildest imagination.\n\nn8n is the open workflow orchestration platform built for the new era of AI. We give technical teams the freedom of code with the speed of no-code, so they can automate faster, smarter, and without limits. Backed by a fiercely inventive community and 500+ builder-approved integrations, we’re changing the way people bring systems together and scale ideas for impact.\n\n\n\nSince our founding in 2019, we’ve grown into a diverse team of over 260 - work",
+   "compensation": {
+    "compensationTierSummary": null,
+    "scrapeableCompensationSalarySummary": null,
+    "compensationTiers": [],
+    "summaryComponents": []
+   }
+  },
+  {
+   "id": "b45f4511-fae8-4ea1-ae88-f17d26f13acb",
+   "title": "Sales Enablement Manager (Remote)",
+   "department": "Operations",
+   "team": "Revenue Operations",
+   "employmentType": "FullTime",
+   "location": "Berlin Office",
+   "shouldDisplayCompensationOnJobPostings": false,
+   "secondaryLocations": [
+    {
+     "location": "Norway",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Norway"
+      }
+     }
+    },
+    {
+     "location": "Netherlands",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Netherlands"
+      }
+     }
+    },
+    {
+     "location": "Portugal",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Portugal"
+      }
+     }
+    },
+    {
+     "location": "Germany",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Germany"
+      }
+     }
+    },
+    {
+     "location": "Finland",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Finland"
+      }
+     }
+    },
+    {
+     "location": "Denmark",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Denmark"
+      }
+     }
+    },
+    {
+     "location": "United Kingdom",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "United Kingdom"
+      }
+     }
+    },
+    {
+     "location": "Spain",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Spain"
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-08-19T13:25:18.860+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "Berlin-Brandenburg",
+     "addressCountry": "Germany",
+     "addressLocality": "Berlin"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/hooli/b45f4511-fae8-4ea1-ae88-f17d26f13acb",
+   "applyUrl": "https://jobs.ashbyhq.com/hooli/b45f4511-fae8-4ea1-ae88-f17d26f13acb/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\"><strong>The AI orchestration of your wildest imagination.</strong></p><p style=\"min-height:1.5em\">hooli is the open workflow orchestration platform built for the new era of AI. We give technical teams the freedom of code with the speed of no-code, so they can automate faster, smarter, and without limits. Backed by a fiercely inventive community and 500+ builder-approved integrations, we’re changing the way people bring systems together and scale ideas for impact.</p><p ",
+   "descriptionPlain": "The AI orchestration of your wildest imagination.\n\nn8n is the open workflow orchestration platform built for the new era of AI. We give technical teams the freedom of code with the speed of no-code, so they can automate faster, smarter, and without limits. Backed by a fiercely inventive community and 500+ builder-approved integrations, we’re changing the way people bring systems together and scale ideas for impact.\n\n\n\nSince our founding in 2019, we’ve grown into a diverse team of over 260 - work",
+   "compensation": {
+    "compensationTierSummary": null,
+    "scrapeableCompensationSalarySummary": null,
+    "compensationTiers": [],
+    "summaryComponents": []
+   }
+  },
+  {
+   "id": "3a9dfa61-fc8d-485f-afb2-1afedda5bf8f",
+   "title": "Leadership roles (Talent Pool)",
+   "department": "Other",
+   "team": "Other",
+   "employmentType": "FullTime",
+   "location": "Berlin Office",
+   "shouldDisplayCompensationOnJobPostings": false,
+   "secondaryLocations": [
+    {
+     "location": "Europe",
+     "address": {
+      "postalAddress": {}
+     }
+    },
+    {
+     "location": "United Kingdom",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "United Kingdom"
+      }
+     }
+    },
+    {
+     "location": "United States",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "United States",
+       "addressLocality": ""
+      }
+     }
+    }
+   ],
+   "publishedAt": "2025-10-08T16:43:21.396+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "Berlin-Brandenburg",
+     "addressCountry": "Germany",
+     "addressLocality": "Berlin"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/hooli/3a9dfa61-fc8d-485f-afb2-1afedda5bf8f",
+   "applyUrl": "https://jobs.ashbyhq.com/hooli/3a9dfa61-fc8d-485f-afb2-1afedda5bf8f/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\"><strong>The AI orchestration of your wildest imagination.</strong></p><p style=\"min-height:1.5em\">hooli is the open workflow orchestration platform built for the new era of AI. We give technical teams the freedom of code with the speed of no-code, so they can automate faster, smarter, and without limits. Backed by a fiercely inventive community and 500+ builder-approved integrations, we’re changing the way people bring systems together and scale ideas for impact.</p><p ",
+   "descriptionPlain": "The AI orchestration of your wildest imagination.\n\nn8n is the open workflow orchestration platform built for the new era of AI. We give technical teams the freedom of code with the speed of no-code, so they can automate faster, smarter, and without limits. Backed by a fiercely inventive community and 500+ builder-approved integrations, we’re changing the way people bring systems together and scale ideas for impact.\n\n\n\nSince our founding in 2019, we’ve grown into a diverse team of over 260 - work",
+   "compensation": {
+    "compensationTierSummary": null,
+    "scrapeableCompensationSalarySummary": null,
+    "compensationTiers": [],
+    "summaryComponents": []
+   }
+  }
+ ]
+}

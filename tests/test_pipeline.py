@@ -163,3 +163,23 @@ def test_partially_failed_scoring_is_retried_next_run_and_reported(setup):
     assert "10 jobs could not be scored" in path.read_text()
     run2, _ = run_pipeline(settings, profile, db, [FakeSource("a", jobs)], SmartFake(), NOW)
     assert run2.new == 10 and run2.scored == 10
+
+
+def test_source_partial_errors_are_recorded(setup):
+    settings, profile, db = setup
+
+    class PartlyBroken(FakeSource):
+        errors = ["watchlist:Ghost"]
+
+    run, _ = run_pipeline(settings, profile, db, [PartlyBroken("watchlist", [make_job(1)])], SmartFake(), NOW)
+    assert run.failed_sources == ["watchlist:Ghost"] and run.kept == 1
+
+
+def test_scoring_is_capped_and_rest_wait_for_next_run(setup):
+    settings, profile, db = setup
+    settings = settings.model_copy(update={"max_scored_per_run": 3, "top_n": 0})
+    jobs = [make_job(i) for i in range(1, 6)]
+    run, _ = run_pipeline(settings, profile, db, [FakeSource("a", jobs)], SmartFake(), NOW)
+    assert run.kept == 5 and run.scored == 3
+    run2, _ = run_pipeline(settings, profile, db, [FakeSource("a", jobs)], SmartFake(), NOW)
+    assert run2.new == 2 and run2.scored == 2

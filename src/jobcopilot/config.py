@@ -29,12 +29,27 @@ class LLMSettings(BaseModel):
     timeout_s: int = 300
 
 
+class WatchlistEntry(BaseModel):
+    """A company whose public job board is checked every run."""
+
+    name: str
+    ats: Literal["greenhouse", "ashby", "lever"]
+    slug: str
+
+
 class Settings(BaseModel):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     top_n: int = 10
     min_score: int = 60
     lookback_days: int = 14
-    sources: list[str] = Field(default_factory=lambda: ["remotive", "remoteok", "arbeitnow", "hn"])
+    sources: list[str] = Field(
+        default_factory=lambda: ["remotive", "remoteok", "arbeitnow", "hn", "jobicy", "himalayas", "workingnomads", "wwr", "watchlist"]
+    )
+    himalayas_queries: list[str] = Field(default_factory=lambda: ["python", "AI engineer", "LLM", "machine learning"])
+    himalayas_country: str = "Spain"
+    watchlist: list[WatchlistEntry] = Field(default_factory=list)
+    # Caps LLM usage when a source (e.g. a new watchlist) brings many jobs at once; the rest wait for the next run.
+    max_scored_per_run: int = 150
     data_dir: Path
 
     @property

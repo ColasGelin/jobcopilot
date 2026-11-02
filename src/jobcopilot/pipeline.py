@@ -23,6 +23,7 @@ def _collect(sources: list[Source], since: datetime, run: Run) -> list[Job]:
             jobs.extend(source.fetch(since))
         except Exception:  # one broken feed must not stop the others
             run.failed_sources.append(source.name)
+        run.failed_sources.extend(getattr(source, "errors", []))  # partial failures, e.g. one watchlist company
     return jobs
 
 
@@ -38,8 +39,11 @@ def run_pipeline(
         fresh = db.filter_new(jobs)
         run.new = len(fresh)
         # Only jobs that pass the filters are stored, so a profile change re-evaluates the rest.
-        kept = apply_filters(fresh, profile.hard_filters)
-        run.kept = len(kept)
+        passing = apply_filters(fresh, profile.hard_filters)
+        run.kept = len(passing)
+        # Newest first; anything over the cap is not stored, so the next run picks it up.
+        passing.sort(key=lambda j: j.posted_at.timestamp() if j.posted_at else 0, reverse=True)
+        kept = passing[: settings.max_scored_per_run]
         db.insert_jobs(kept, now)
 
         evaluations, failed = score_jobs(kept, profile, llm, settings.llm.score_model) if kept else ([], [])

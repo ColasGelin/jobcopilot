@@ -1,0 +1,159 @@
+{
+ "jobs": [
+  {
+   "absolute_url": "https://job-boards.eu.greenhouse.io/globex/jobs/5020326101",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": true,
+     "requires_processing_consent": false,
+     "requires_retention_consent": true,
+     "retention_period": 365,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 4542424101,
+   "location": {
+    "name": "León"
+   },
+   "metadata": null,
+   "id": 5020326101,
+   "updated_at": "2026-10-29T05:57:51-04:00",
+   "requisition_id": "2933",
+   "title": "Associate Legal Counsel - Finance or Derivatives Lawyer ",
+   "company_name": "Globex",
+   "first_published": "2026-10-29T05:57:51-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;p&gt;Globex helps ambitious businesses unlock global growth, and we take the same approach with our people. We encourage innovation and movement, collaboration and problem-solving, and foster an environment where everyone can feel they belong, are valued, supported and empowered to succeed.&lt;/p&gt;\n&lt;p&gt;If you’re a collaborator who wants to help transform how businesses operate globally, get in touch - we’d love to discuss how Globex can acceler",
+   "departments": [
+    {
+     "id": 4010775101,
+     "name": "Legal",
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "offices": [
+    {
+     "id": 4012275101,
+     "name": "León",
+     "location": "León",
+     "child_ids": [],
+     "parent_id": 4003753101
+    },
+    {
+     "id": 4003781101,
+     "name": "Madrid",
+     "location": null,
+     "child_ids": [],
+     "parent_id": 4003753101
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  },
+  {
+   "absolute_url": "https://job-boards.eu.greenhouse.io/globex/jobs/5017584101",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": true,
+     "requires_processing_consent": false,
+     "requires_retention_consent": true,
+     "retention_period": 365,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 4542424101,
+   "location": {
+    "name": "Madrid"
+   },
+   "metadata": null,
+   "id": 5017584101,
+   "updated_at": "2026-10-29T05:56:38-04:00",
+   "requisition_id": "2933",
+   "title": "Associate Legal Counsel - Finance or Derivatives Lawyer ",
+   "company_name": "Globex",
+   "first_published": "2026-10-28T06:05:35-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;p&gt;Globex helps ambitious businesses unlock global growth, and we take the same approach with our people. We encourage innovation and movement, collaboration and problem-solving, and foster an environment where everyone can feel they belong, are valued, supported and empowered to succeed.&lt;/p&gt;\n&lt;p&gt;If you’re a collaborator who wants to help transform how businesses operate globally, get in touch - we’d love to discuss how Globex can acceler",
+   "departments": [
+    {
+     "id": 4010775101,
+     "name": "Legal",
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "offices": [
+    {
+     "id": 4012275101,
+     "name": "León",
+     "location": "León",
+     "child_ids": [],
+     "parent_id": 4003753101
+    },
+    {
+     "id": 4003781101,
+     "name": "Madrid",
+     "location": null,
+     "child_ids": [],
+     "parent_id": 4003753101
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  },
+  {
+   "absolute_url": "https://job-boards.eu.greenhouse.io/globex/jobs/5020744101",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": true,
+     "requires_processing_consent": false,
+     "requires_retention_consent": true,
+     "retention_period": 365,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 4440526101,
+   "location": {
+    "name": "Montreal"
+   },
+   "metadata": null,
+   "id": 5020744101,
+   "updated_at": "2026-10-29T10:00:49-04:00",
+   "requisition_id": "2453",
+   "title": "Branch Manager - FX Sales",
+   "company_name": "Globex",
+   "first_published": "2026-10-29T10:00:49-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;p&gt;Globex helps ambitious businesses unlock global growth, and we take the same approach with our people. We encourage innovation and movement, collaboration and problem-solving, and foster an environment where everyone can feel they belong, are valued, supported and empowered to succeed.&lt;/p&gt;\n&lt;p&gt;If you’re a collaborator who wants to help transform how businesses operate globally, get in touch - we’d love to discuss how Globex can acceler",
+   "departments": [
+    {
+     "id": 4010765101,
+     "name": "Sales",
+     "child_ids": [],
+     "parent_id": 4010727101
+    }
+   ],
+   "offices": [
+    {
+     "id": 4003789101,
+     "name": "Montreal",
+     "location": null,
+     "child_ids": [],
+     "parent_id": 4003757101
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  }
+ ]
+}

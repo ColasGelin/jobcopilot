@@ -1,0 +1,198 @@
+{
+ "totalCount": 3,
+ "jobs": [
+  {
+   "title": "ML Engineer (MSc. or PhD)",
+   "excerpt": "Senior ML Engineer (MSc.  or PhD)Pay: $60–$120/hour Location: Global, fully remote Job Type: Contractor (~15 hours per week) Schedule: Flexible—you choose the hours and days you work, including weekends if desired We are looking for highly skilled Machine Learning Experts to contribute to an AI training project involving model development, training and inference systems, numerical computing, performance optimization, and Python.",
+   "companyName": "micro1",
+   "companySlug": "micro1",
+   "companyLogo": "https://cdn-images.himalayas.app/91oa56akgt3qjqc1nh3uoruub40c",
+   "employmentType": "Contractor",
+   "minSalary": null,
+   "maxSalary": null,
+   "salaryPeriod": "hourly",
+   "seniority": [
+    "Mid-level",
+    "Senior"
+   ],
+   "currency": "USD",
+   "locationRestrictions": [],
+   "timezoneRestrictions": [
+    -11,
+    -10,
+    -9.5,
+    -9,
+    -8,
+    -7,
+    -6,
+    -5,
+    -4,
+    -3.5,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5.5,
+    5.75,
+    6,
+    6.5,
+    7,
+    8,
+    8.75,
+    9,
+    9.5,
+    10,
+    10.5,
+    11,
+    12,
+    12.75,
+    13,
+    14
+   ],
+   "categories": [
+    "AI-ML-Engineer",
+    "Machine-Learning-Engineer",
+    "ML-AI-Research-Engineer",
+    "ML-Research-Engineer",
+    "AI-ML-Research-Engineer",
+    "Senior-ML-Engineer",
+    "Senior-AI-ML-Engineer"
+   ],
+   "parentCategories": [
+    "Data Science"
+   ],
+   "description": "<h3>Senior ML Engineer (MSc. or PhD)</h3><p><strong>Pay:</strong> $60–$120/hour</p><p><strong>Location:</strong> Global, fully remote</p><p><strong>Job Type:</strong> Contractor (~15 hours per week)</p><p><strong>Schedule:</strong> Flexible—you choose the hours and days you work, including weekends if desired</p><p>We are looking for highly skilled <strong>Machine Learning Experts</strong> to contribute to an AI training project involving model development, training and inference systems, numeri",
+   "pubDate": "1793527200",
+   "expiryDate": 1797363319,
+   "applicationLink": "https://himalayas.app/companies/micro1/jobs/ml-engineer-msc-or-phd?utm_source=api",
+   "guid": "https://himalayas.app/companies/micro1/jobs/ml-engineer-msc-or-phd"
+  },
+  {
+   "title": "Senior React Native Developer",
+   "excerpt": "Lemon. io helps companies in the US and Europe hire experienced engineers, from funded startups to teams like Klarna, Retool, and Pinterest.",
+   "companyName": "lemon.io",
+   "companySlug": "lemon-io",
+   "companyLogo": "https://cdn-images.himalayas.app/7q73pk07sy2xiwd47drvhwevk93r",
+   "employmentType": "Contractor",
+   "minSalary": null,
+   "maxSalary": null,
+   "salaryPeriod": "annual",
+   "seniority": [
+    "Senior"
+   ],
+   "currency": "USD",
+   "locationRestrictions": [
+    "Albania",
+    "Andorra",
+    "Argentina",
+    "Australia",
+    "Belgium",
+    "Belize",
+    "Spain"
+   ],
+   "timezoneRestrictions": [
+    -11,
+    -10,
+    -9.5,
+    -9,
+    -8,
+    -7,
+    -6,
+    -5,
+    -4,
+    -3.5,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5.5,
+    5.75,
+    6,
+    6.5,
+    7,
+    8,
+    8.75,
+    9,
+    9.5,
+    10,
+    10.5,
+    11,
+    12,
+    12.75,
+    13,
+    14
+   ],
+   "categories": [
+    "React-Native-Developer",
+    "Senior-React-Native-Mobile-Developer",
+    "Senior-React-Native-Engineer"
+   ],
+   "parentCategories": [
+    "Developer"
+   ],
+   "description": "<p>Lemon.io helps companies in the US and Europe hire experienced engineers, from funded startups to teams like Klarna, Retool, and Pinterest. We’ve been doing this since 2015, and more than 1,500 companies have hired engineers through us.</p><p>New roles for senior React Native engineers come in all the time, and several are open right now.</p><p><strong>Two ways to work with clients</strong></p><ul class=\"list-disc list-outside leading-3 -mt-2\">\n<li class=\"leading-normal -mb-2\"><p><strong>Cont",
+   "pubDate": "1793534400",
+   "expiryDate": 1794679768,
+   "applicationLink": "https://himalayas.app/companies/lemon-io/jobs/senior-react-native-developer-5321943776?utm_source=api",
+   "guid": "https://himalayas.app/companies/lemon-io/jobs/senior-react-native-developer-5321943776"
+  },
+  {
+   "title": "Desarrollador/a Python",
+   "excerpt": "Desde Logicalis Spain buscamos incorporar a un/a Desarrollador/a Python con interés por el mundo de la automatización y ganas de seguir aprendiendo y desarrollándose profesionalmente, para participar en un gran proyecto con uno de nuestros principales clientes del sector bancario, en modalidad 100% remota.",
+   "companyName": "Logicalis Spain",
+   "companySlug": "logicalis-com",
+   "companyLogo": "",
+   "employmentType": "Full Time",
+   "minSalary": 25000,
+   "maxSalary": 30000,
+   "salaryPeriod": "annual",
+   "seniority": [
+    "Mid-level"
+   ],
+   "currency": "EUR",
+   "locationRestrictions": [
+    "Spain"
+   ],
+   "timezoneRestrictions": [
+    0,
+    1
+   ],
+   "categories": [
+    "Python-Developer",
+    "Python-Development",
+    "Backend-Development",
+    "Automation-Developer",
+    "Software-Developer",
+    "Desarrollador-Python",
+    "Desarrollo-Python",
+    "Python-Programmer",
+    "Python-Entwicklung",
+    "Ingénieur-Développement-Python",
+    "Python",
+    "Developer"
+   ],
+   "parentCategories": [
+    "Developer"
+   ],
+   "description": "<p>Desde <a href=\"https://himalayas.app/companies/logicalis-com\">Logicalis Spain</a> buscamos incorporar a un/a <strong>Desarrollador/a Python</strong> con interés por el mundo de la automatización y ganas de seguir aprendiendo y desarrollándose profesionalmente, para participar en un gran proyecto con uno de nuestros principales clientes del <strong>sector bancario</strong>, en modalidad <strong>100% remota</strong>.</p><h3>Funciones a realizar:</h3><ul>\n<li>Desarrollar scripts y aplicaciones e",
+   "pubDate": "1790848800",
+   "expiryDate": 1795303449,
+   "applicationLink": "https://himalayas.app/companies/logicalis-com/jobs/desarrollador-a-python?utm_source=api",
+   "guid": "https://himalayas.app/companies/logicalis-com/jobs/desarrollador-a-python"
+  }
+ ]
+}

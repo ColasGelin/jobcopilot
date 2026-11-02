@@ -37,7 +37,7 @@ def _run(home: Path) -> int:
     profile = load_profile(profile_path)
     db = DB(settings.db_path)
     with http_client() as client:
-        sources = build_sources(settings.sources, client)
+        sources = build_sources(settings.sources, client, settings)
         llm = ClaudeCodeClient(timeout_s=settings.llm.timeout_s)
         result, report = run_pipeline(settings, profile, db, sources, llm, datetime.now().astimezone())
     if result.error:

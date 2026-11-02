@@ -1,0 +1,70 @@
+{
+ "jobCount": 3,
+ "jobs": [
+  {
+   "id": 154392,
+   "url": "https://jobicy.com/jobs/154392-senior-software-engineer-go-rust-blockchain-infrastructure",
+   "jobSlug": "154392-senior-software-engineer-go-rust-blockchain-infrastructure",
+   "jobTitle": "Senior Software Engineer - Go & Rust, Blockchain Infrastructure",
+   "companyName": "QuickNode",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2025/08/e4603221-221.png",
+   "jobIndustry": [
+    "Software Engineering"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "Portugal,  USA",
+   "jobLevel": "Senior",
+   "jobExcerpt": "Quicknode is a cloud-based infrastructure company that powers the blockchain ecosystem. Our mission is to be the indispensable utility that empowers companies and innovators globally to build next-generation, Web3 enabled businesses &amp; applications using blockchain technology. Quicknode is backed by some of the world's best investors including Tiger Global, Y Combinator, SoftBank, and the Seven&hellip;",
+   "jobDescription": "<p><a href=\"https://jobicy.com/company/quicknode\" target=\"_blank\" rel=\"noopener\">Quicknode</a> is a cloud-based infrastructure company that powers the blockchain ecosystem.</p>\n<p>Our mission is to be the indispensable utility that empowers companies and innovators globally to build next-generation, Web3 enabled businesses &amp; applications using blockchain technology. Quicknode is backed by some of the world's best investors including Tiger Global, Y Combinator, SoftBank, and the Seven Seven S",
+   "pubDate": "2026-11-01T10:00:00+00:00",
+   "salaryMin": 171000,
+   "salaryMax": 214000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 154387,
+   "url": "https://jobicy.com/jobs/154387-senior-software-engineer-go-2",
+   "jobSlug": "154387-senior-software-engineer-go-2",
+   "jobTitle": "Senior Software Engineer - Go",
+   "companyName": "QuickNode",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2025/08/e4603221-221.png",
+   "jobIndustry": [
+    "Software Engineering"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "Portugal,  USA",
+   "jobLevel": "Senior",
+   "jobExcerpt": "Quicknode is a cloud-based infrastructure company that powers the blockchain ecosystem. Our mission is to be the indispensable utility that empowers companies and innovators globally to build next-generation, Web3 enabled businesses &amp; applications using blockchain technology. Quicknode is backed by some of the world's best investors including Tiger Global, Y Combinator, SoftBank, and the Seven&hellip;",
+   "jobDescription": "<p><a href=\"https://jobicy.com/company/quicknode\" target=\"_blank\" rel=\"noopener\">Quicknode</a> is a cloud-based infrastructure company that powers the blockchain ecosystem.</p>\n<p>Our mission is to be the indispensable utility that empowers companies and innovators globally to build next-generation, Web3 enabled businesses &amp; applications using blockchain technology. Quicknode is backed by some of the world's best investors including Tiger Global, Y Combinator, SoftBank, and the Seven Seven S",
+   "pubDate": "2026-11-01T12:00:00+00:00",
+   "salaryMin": 171000,
+   "salaryMax": 214000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 152147,
+   "url": "https://jobicy.com/jobs/152147-engineering-manager-data-platform-2",
+   "jobSlug": "152147-engineering-manager-data-platform-2",
+   "jobTitle": "Engineering Manager - Data Platform",
+   "companyName": "Spotify",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2021/03/Jobicy-210328105941-289246.jpg",
+   "jobIndustry": [
+    "Software Engineering"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "UK",
+   "jobLevel": "Senior",
+   "jobExcerpt": "Within the Data Platform studio, we own two critical pillars: our event delivery platform that collects trillions of events per day from producers to consumers, and another, which handles the pseudonymisation of data so Spotify can use data responsibly and in compliance with privacy regulations. These systems sit at the heart of Spotify's data collection&hellip;",
+   "jobDescription": "<p>Within the Data Platform studio, we own two critical pillars: our event delivery platform that collects trillions of events per day from producers to consumers, and another, which handles the pseudonymisation of data so <a href=\"https://jobicy.com/company/spotify\" target=\"_blank\" rel=\"noopener\">Spotify</a> can use data responsibly and in compliance with privacy regulations. These systems sit at the heart of Spotify's data collection and are used by hundreds of teams across the company.</p>\n<p",
+   "pubDate": "2026-10-01T10:00:00+00:00"
+  }
+ ]
+}

@@ -60,3 +60,8 @@ def test_add_to_report_appends_later_run_and_keeps_morning(tmp_path):
     path = add_to_report(tmp_path, DAY, "# Job matches — noon", has_items=True)
     text = path.read_text()
     assert "morning" in text and "# Later run — job matches — noon" in text and "empty" not in text
+
+
+def test_report_names_new_sources():
+    j = make_job(1, source="jobicy")
+    assert "via Jobicy" in render_report(DAY, RUN, [(j, ev(j, 70), None)], [])
