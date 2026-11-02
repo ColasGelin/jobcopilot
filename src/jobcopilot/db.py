@@ -90,6 +90,11 @@ class DB:
                         (j.id, _iso(seen_at)),
                     )
 
+    def delete_jobs(self, job_ids: list[str]) -> None:
+        with self.conn:
+            for table, col in (("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
+                self.conn.executemany(f"DELETE FROM {table} WHERE {col} = ?", [(i,) for i in job_ids])
+
     def get_job(self, job_id: str) -> Job | None:
         row = self.conn.execute(f"SELECT {_JOB_COLS} FROM jobs WHERE id = ?", (job_id,)).fetchone()
         if row is None:

@@ -73,3 +73,9 @@ def test_run_roundtrip(db):
 def test_known_urls(db):
     db.insert_jobs([job()], NOW)
     assert db.known_urls() == {"https://a/1"}
+
+
+def test_delete_jobs_removes_job_and_application(db):
+    db.insert_jobs([job()], NOW)
+    db.delete_jobs([job().id])
+    assert db.known_urls() == set() and db.status(job().id) is None
