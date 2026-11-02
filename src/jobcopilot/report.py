@@ -22,7 +22,7 @@ def _item(job: Job, evaluation: Evaluation, draft: Draft | None) -> list[str]:
         "",
     ]
     if draft is None:
-        lines += ["_Draft failed — retry tomorrow._", ""]
+        lines += ["_Draft failed — write this one yourself or re-run later._", ""]
         return lines
     lines += ["**CV tweaks**", ""] + [f"- {t}" for t in draft.cv_tweaks] + [""]
     lines += ["**Cover note**", "", draft.cover_note, ""]
@@ -31,7 +31,11 @@ def _item(job: Job, evaluation: Evaluation, draft: Draft | None) -> list[str]:
 
 
 def render_report(
-    day: date, run: Run, items: list[tuple[Job, Evaluation, Draft | None]], follow_ups: list[tuple[Job, datetime]]
+    day: date,
+    run: Run,
+    items: list[tuple[Job, Evaluation, Draft | None]],
+    follow_ups: list[tuple[Job, datetime]],
+    unscored: int = 0,
 ) -> str:
     lines = [f"# Job matches — {day.isoformat()}", "", "## Today's focus", ""]
     lines.append("1. Send the top 3–5 applications below.")
@@ -45,6 +49,8 @@ def render_report(
     lines += ["", f"_{summary}_"]
     if run.failed_sources:
         lines.append(f"_Failed sources: {', '.join(run.failed_sources)}_")
+    if unscored:
+        lines.append(f"_{unscored} jobs could not be scored; they will be retried next run._")
     lines.append("")
     for job, evaluation, draft in sorted(items, key=lambda it: it[1].score, reverse=True):
         lines += _item(job, evaluation, draft)
@@ -57,4 +63,18 @@ def write_report(reports_dir: Path, day: date, content: str) -> Path:
     reports_dir.mkdir(parents=True, exist_ok=True)
     path = reports_dir / f"{day.isoformat()}.md"
     path.write_text(content, encoding="utf-8")
+    return path
+
+
+def add_to_report(reports_dir: Path, day: date, content: str, has_items: bool) -> Path:
+    """Write today's report, without losing an earlier run's report from the same day.
+
+    A later run with nothing new leaves the existing report untouched; one with new
+    matches is appended below it."""
+    path = reports_dir / f"{day.isoformat()}.md"
+    if not path.exists():
+        return write_report(reports_dir, day, content)
+    if has_items:
+        with path.open("a", encoding="utf-8") as f:
+            f.write("\n\n---\n\n" + content.replace("# Job matches", "# Later run — job matches", 1))
     return path

@@ -37,9 +37,15 @@ def test_retries_once_on_invalid_then_succeeds(profile):
 
 
 def test_batch_fails_after_two_errors(profile):
-    jobs = [make_job(1), make_job(2)]
-    evals, failed = score_jobs(jobs, profile, FakeLLMClient([LLMError("a"), LLMError("b")]), "haiku")
-    assert evals == [] and sorted(failed) == sorted(j.id for j in jobs)
+    jobs = [make_job(i) for i in range(11)]
+    fake = FakeLLMClient([LLMError("a"), LLMError("b"), {"results": [result(jobs[10])]}])
+    evals, failed = score_jobs(jobs, profile, fake, "haiku", batch_size=10)
+    assert len(evals) == 1 and sorted(failed) == sorted(j.id for j in jobs[:10])
+
+
+def test_every_batch_failing_raises_unavailable(profile):
+    with pytest.raises(LLMUnavailable, match="usage limit"):
+        score_jobs([make_job(1)], profile, FakeLLMClient([LLMError("a"), LLMError("usage limit")]), "haiku")
 
 
 def test_missing_job_in_response_is_failed(profile):

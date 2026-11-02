@@ -68,33 +68,44 @@ def _parse(data: dict, ids: set[str], model: str) -> list[Evaluation]:
     return evals
 
 
-def _score_batch(batch: list[Job], profile: Profile, llm: LLMClient, model: str) -> list[Evaluation] | None:
+def _score_batch(batch: list[Job], profile: Profile, llm: LLMClient, model: str) -> list[Evaluation] | Exception:
+    """Return the batch's evaluations, or the last error after one retry."""
     prompt = _render(batch, profile)
     ids = {j.id for j in batch}
+    error: Exception = LLMError("no attempt made")
     for attempt in range(2):
         try:
             return _parse(llm.complete_json(prompt, SCHEMA, model), ids, model)
         except LLMUnavailable:
             raise
         except (LLMError, ValidationError, KeyError, TypeError) as e:
+            error = e
             if attempt == 0:
                 prompt += RETRY_SUFFIX.format(error=str(e)[:500])
-    return None
+    return error
 
 
 def score_jobs(
     jobs: list[Job], profile: Profile, llm: LLMClient, model: str, batch_size: int = 10
 ) -> tuple[list[Evaluation], list[str]]:
-    """Score jobs in batches. Returns (evaluations, ids of jobs that could not be scored)."""
+    """Score jobs in batches. Returns (evaluations, ids of jobs that could not be scored).
+
+    If every batch fails, the backend is treated as unavailable (usage limit, outage...)."""
     evaluations: list[Evaluation] = []
     failed: list[str] = []
+    succeeded = False
+    last_error: Exception | None = None
     for start in range(0, len(jobs), batch_size):
         batch = jobs[start : start + batch_size]
         result = _score_batch(batch, profile, llm, model)
-        if result is None:
+        if isinstance(result, Exception):
+            last_error = result
             failed.extend(j.id for j in batch)
             continue
+        succeeded = True
         scored = {e.job_id for e in result}
         evaluations.extend(result)
         failed.extend(j.id for j in batch if j.id not in scored)
+    if jobs and not succeeded:
+        raise LLMUnavailable(f"every scoring call failed; last error: {last_error}")
     return evaluations, failed

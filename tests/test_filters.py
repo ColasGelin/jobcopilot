@@ -67,3 +67,20 @@ def test_accepts_unparseable_salary():
 def test_apply_filters_keeps_only_passing():
     jobs = [job(url="a"), job(url="b", title="Senior Dev")]
     assert [j.url for j in apply_filters(jobs, F)] == ["a"]
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("loc", ["Remote", "REMOTE", "Anywhere", "Remote - global"])
+def test_accepts_plain_remote_location(loc):
+    assert rejection_reason(job(location=loc), F) is None
+
+
+@_pytest.mark.parametrize("salary", ["€50.000 - €60.000", "€ 45.000,00", "$50/hour", "Up to 4.5k/month", "€3.000 brutto/Monat"])
+def test_salary_parser_does_not_reject_european_or_non_annual_figures(salary):
+    assert rejection_reason(job(salary_text=salary), F) is None
+
+
+def test_salary_european_thousands_below_min_still_rejected():
+    assert rejection_reason(job(salary_text="€20.000 - €25.000"), F) == "salary"

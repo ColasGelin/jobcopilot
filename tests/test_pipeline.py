@@ -110,3 +110,56 @@ def test_jobs_from_aborted_run_are_retried_next_run(setup):
     run_pipeline(settings, profile, db, sources, FakeLLMClient([LLMUnavailable("logged out")]), NOW)
     run, path = run_pipeline(settings, profile, db, sources, SmartFake(), NOW)
     assert run.new == 1 and run.scored == 1 and run.drafted == 1
+
+
+def test_rejected_jobs_are_not_stored_so_profile_fixes_apply(setup):
+    settings, profile, db = setup
+    run_pipeline(settings, profile, db, [FakeSource("a", [make_job(1, location="USA")])], SmartFake(), NOW)
+    assert db.known_urls() == set()
+
+
+def test_second_run_with_nothing_new_keeps_morning_report(setup):
+    settings, profile, db = setup
+    sources = [FakeSource("a", [make_job(1, company="MorningCo")])]
+    _, path = run_pipeline(settings, profile, db, sources, SmartFake(), NOW)
+    run_pipeline(settings, profile, db, sources, SmartFake(), NOW)
+    assert "MorningCo" in path.read_text()
+
+
+class AlwaysFails(FakeLLMClient):
+    def __init__(self):
+        super().__init__([])
+
+    def complete_json(self, prompt, schema, model):
+        self.calls.append((prompt, schema, model))
+        from jobcopilot.llm import LLMError
+        raise LLMError("You've hit your usage limit")
+
+
+def test_all_batches_failing_aborts_and_keeps_jobs_for_next_run(setup):
+    settings, profile, db = setup
+    sources = [FakeSource("a", [make_job(1), make_job(2)])]
+    run, path = run_pipeline(settings, profile, db, sources, AlwaysFails(), NOW)
+    assert path is None and run.error and "usage limit" in run.error
+    run2, _ = run_pipeline(settings, profile, db, sources, SmartFake(), NOW)
+    assert run2.scored == 2
+
+
+def test_partially_failed_scoring_is_retried_next_run_and_reported(setup):
+    settings, profile, db = setup
+
+    class FirstBatchFails(SmartFake):
+        def complete_json(self, prompt, schema, model):
+            if "results" in schema["properties"] and make_job(1).id in prompt:
+                self.calls.append((prompt, schema, model))
+                from jobcopilot.llm import LLMError
+                raise LLMError("overloaded")
+            return super().complete_json(prompt, schema, model)
+
+    settings = settings.model_copy(update={"top_n": 5})
+    jobs = [make_job(i) for i in range(1, 12)]  # 11 jobs → batches of 10 + 1
+    run, path = run_pipeline(settings, profile, db, [FakeSource("a", jobs)], FirstBatchFails(), NOW)
+    assert run.scored == 1
+    assert "10 jobs could not be scored" in path.read_text()
+    run2, _ = run_pipeline(settings, profile, db, [FakeSource("a", jobs)], SmartFake(), NOW)
+    assert run2.new == 10 and run2.scored == 10

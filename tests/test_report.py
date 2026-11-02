@@ -51,3 +51,12 @@ def test_write_report_overwrites(tmp_path):
     path = write_report(tmp_path, DAY, "second")
     assert path == tmp_path / "2026-11-02.md"
     assert path.read_text() == "second"
+
+
+def test_add_to_report_appends_later_run_and_keeps_morning(tmp_path):
+    from jobcopilot.report import add_to_report
+    add_to_report(tmp_path, DAY, "# Job matches — morning", has_items=True)
+    add_to_report(tmp_path, DAY, "# Job matches — empty", has_items=False)
+    path = add_to_report(tmp_path, DAY, "# Job matches — noon", has_items=True)
+    text = path.read_text()
+    assert "morning" in text and "# Later run — job matches — noon" in text and "empty" not in text

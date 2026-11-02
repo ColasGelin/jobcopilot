@@ -11,7 +11,7 @@ from jobcopilot.drafting import draft_application
 from jobcopilot.filters import apply_filters
 from jobcopilot.llm import LLMClient, LLMError, LLMUnavailable
 from jobcopilot.models import Draft, Evaluation, Job, Run
-from jobcopilot.report import render_report, write_report
+from jobcopilot.report import add_to_report, render_report
 from jobcopilot.scoring import score_jobs
 from jobcopilot.sources import Source
 
@@ -31,19 +31,19 @@ def run_pipeline(
 ) -> tuple[Run, Path | None]:
     run = Run(started_at=now)
     run_id = db.start_run(run)
-    fresh: list[Job] = []
+    kept: list[Job] = []
     try:
         jobs = _collect(sources, now - timedelta(days=settings.lookback_days), run)
         run.fetched = len(jobs)
         fresh = db.filter_new(jobs)
         run.new = len(fresh)
-        db.insert_jobs(fresh, now)
+        # Only jobs that pass the filters are stored, so a profile change re-evaluates the rest.
         kept = apply_filters(fresh, profile.hard_filters)
         run.kept = len(kept)
+        db.insert_jobs(kept, now)
 
         evaluations, failed = score_jobs(kept, profile, llm, settings.llm.score_model) if kept else ([], [])
-        for job_id in failed:
-            db.mark_llm_error(job_id)
+        db.delete_jobs(failed)  # retried next run
         for e in evaluations:
             db.save_evaluation(e)
         run.scored = len(evaluations)
@@ -64,10 +64,11 @@ def run_pipeline(
                 draft = None
             items.append((job, e, draft))
 
-        path = write_report(settings.reports_dir, now.date(), render_report(now.date(), run, items, db.follow_ups_due(now)))
+        content = render_report(now.date(), run, items, db.follow_ups_due(now), unscored=len(failed))
+        path = add_to_report(settings.reports_dir, now.date(), content, has_items=bool(items))
     except LLMUnavailable as e:
         # Forget this run's new jobs so the next run picks them up again.
-        db.delete_jobs([j.id for j in fresh])
+        db.delete_jobs([j.id for j in kept])
         run.error = str(e)
         path = None
     except Exception as e:
