@@ -33,7 +33,7 @@ class Settings(BaseModel):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     top_n: int = 10
     min_score: int = 60
-    lookback_days: int = 3
+    lookback_days: int = 14
     sources: list[str] = Field(default_factory=lambda: ["remotive", "remoteok", "arbeitnow", "hn"])
     data_dir: Path
 

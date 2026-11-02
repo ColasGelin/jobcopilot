@@ -16,3 +16,7 @@ def test_settings_defaults_when_missing(tmp_path):
     assert s.top_n == 10
     assert s.llm.score_model == "haiku"
     assert s.db_path == tmp_path / "jobs.db"
+
+
+def test_default_lookback_covers_delayed_feeds(tmp_path):
+    assert load_settings(tmp_path / "config.yaml").lookback_days == 14

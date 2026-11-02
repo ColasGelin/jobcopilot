@@ -52,13 +52,19 @@ def test_hn_comment_without_separator_uses_first_words_as_company():
 
 def test_hn_skips_deleted_and_nested_comments():
     urls = set(jobs_by_url())
-    assert len(urls) == 3
+    assert len(urls) == 4
     assert not any(u.endswith(("1004", "2001")) for u in urls)
 
 
 def test_hn_keeps_whole_current_thread_regardless_of_since():
-    assert len(jobs_by_url()) == 3  # comments are from Oct 1, SINCE is Oct 30
+    assert len(jobs_by_url()) == 4  # comments are from Oct 1, SINCE is Oct 30
 
 
 def test_build_sources_knows_hn():
     assert [s.name for s in build_sources(["hn"], hn_client())] == ["hn"]
+
+
+def test_hn_skips_url_fields_in_header():
+    j = jobs_by_url()["https://news.ycombinator.com/item?id=1005"]
+    assert (j.company, j.title) == ("Checkly", "Product Engineer")
+    assert j.location == "REMOTE (Europe)"

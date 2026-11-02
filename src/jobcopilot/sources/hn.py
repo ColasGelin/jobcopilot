@@ -11,6 +11,7 @@ from jobcopilot.text import html_to_text, normalize
 
 SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&query=who%20is%20hiring&hitsPerPage=5"
 ITEM_URL = "https://hn.algolia.com/api/v1/items/{id}"
+_URL = re.compile(r"^(https?://|www\.)\S+$")
 _SEP = re.compile(r"\s*\|\s*|\s+[—–]\s+")
 
 
@@ -37,7 +38,7 @@ class HNSource:
             text = child.get("text")
             if not text:
                 continue
-            parts = [p for p in _SEP.split(_header(text)) if p]
+            parts = [p for p in _SEP.split(_header(text)) if p and not _URL.match(p)]
             if len(parts) >= 2:
                 company, title, location = parts[0], parts[1], " | ".join(parts[2:])
             else:
