@@ -1,3 +1,7 @@
+# Usage on the server:
+#   cp .env.example .env   # add CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`
+#   docker compose up -d --build
+# Dashboard: published on 127.0.0.1:8077 only; reach it via `LocalForward 8077 localhost:8077` in ~/.ssh/config.
 services:
   jobcopilot:
     build: .
@@ -9,3 +13,15 @@ services:
     volumes:
       - ./data:/data        # profile.yaml, config.yaml, jobs.db, reports/, logs/
     command: ["daemon", "--at", "08:30"]
+
+  web:
+    image: jobcopilot:latest
+    depends_on: [jobcopilot]
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Madrid
+    volumes:
+      - ./data:/data
+    command: ["serve", "--host", "0.0.0.0", "--port", "8077"]   # 0.0.0.0 inside the container only
+    ports:
+      - "127.0.0.1:8077:8077"
