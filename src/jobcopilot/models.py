@@ -55,3 +55,13 @@ class Run(BaseModel):
     drafted: int = 0
     failed_sources: list[str] = Field(default_factory=list)
     error: str | None = None
+
+
+class Match(BaseModel):
+    """A job with its latest evaluation, latest draft and application status (dashboard view model)."""
+
+    job_id: str
+    job: Job
+    evaluation: Evaluation
+    draft: Draft | None
+    status: str

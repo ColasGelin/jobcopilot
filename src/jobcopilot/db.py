@@ -7,10 +7,11 @@ import sqlite3
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Run
+from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Match, Run
 from jobcopilot.text import normalize
 
 FOLLOW_UP_AFTER = timedelta(days=5)
+PIPELINE_STATUSES = ("shortlisted", "applied", "interview", "offer", "rejected")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS jobs (
@@ -55,8 +56,11 @@ def _key(job: Job) -> tuple[str, str]:
 
 class DB:
     def __init__(self, path: Path | str):
-        self.conn = sqlite3.connect(str(path))
+        # timeout + WAL: the daemon and the dashboard share this file.
+        self.conn = sqlite3.connect(str(path), timeout=10)
         self.conn.row_factory = sqlite3.Row
+        if str(path) != ":memory:":
+            self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(SCHEMA)
 
     # --- jobs ---------------------------------------------------------------
@@ -169,6 +173,57 @@ class DB:
             (_iso(now),),
         ).fetchall()
         return [(self.get_job(r["job_id"]), _dt(r["next_follow_up_at"])) for r in rows]
+
+    # --- dashboard -----------------------------------------------------------
+    def _latest_evaluation(self, job_id: str) -> Evaluation | None:
+        row = self.conn.execute(
+            "SELECT job_id, score, fit_reasons, gaps, model, prompt_version FROM evaluations"
+            " WHERE job_id = ? ORDER BY id DESC LIMIT 1",
+            (job_id,),
+        ).fetchone()
+        return Evaluation(**dict(row)) if row else None
+
+    def match(self, job_id: str) -> Match | None:
+        job = self.get_job(job_id)
+        if job is None:
+            return None
+        evaluation = self._latest_evaluation(job_id) or Evaluation(
+            job_id=job_id, score=0, fit_reasons="", gaps="", model="", prompt_version=""
+        )
+        return Match(job_id=job_id, job=job, evaluation=evaluation, draft=self.latest_draft(job_id), status=self.status(job_id) or "new")
+
+    def latest_match_day(self) -> date | None:
+        row = self.conn.execute(
+            "SELECT max(substr(j.first_seen_at, 1, 10)) FROM jobs j WHERE EXISTS (SELECT 1 FROM evaluations e WHERE e.job_id = j.id)"
+        ).fetchone()
+        return date.fromisoformat(row[0]) if row and row[0] else None
+
+    def matches_for_day(self, day: date) -> list[Match]:
+        rows = self.conn.execute(
+            "SELECT j.id FROM jobs j WHERE substr(j.first_seen_at, 1, 10) = ?"
+            " AND EXISTS (SELECT 1 FROM evaluations e WHERE e.job_id = j.id)",
+            (day.isoformat(),),
+        ).fetchall()
+        matches = [self.match(r[0]) for r in rows]
+        return sorted(matches, key=lambda m: m.evaluation.score, reverse=True)
+
+    def pipeline(self) -> dict[str, list[Match]]:
+        groups: dict[str, list[Match]] = {s: [] for s in PIPELINE_STATUSES}
+        rows = self.conn.execute(
+            f"SELECT job_id, status FROM applications WHERE status IN ({','.join('?' * len(PIPELINE_STATUSES))})"
+            " ORDER BY updated_at DESC",
+            PIPELINE_STATUSES,
+        ).fetchall()
+        for r in rows:
+            groups[r["status"]].append(self.match(r["job_id"]))
+        return groups
+
+    def follow_up_due_ids(self, now: datetime) -> set[str]:
+        return {job.id for job, _ in self.follow_ups_due(now)}
+
+    def list_runs(self, limit: int = 30) -> list[tuple[int, Run]]:
+        ids = [r[0] for r in self.conn.execute("SELECT id FROM runs ORDER BY started_at DESC, id DESC LIMIT ?", (limit,))]
+        return [(i, self.get_run(i)) for i in ids]
 
     # --- runs ---------------------------------------------------------------
     def start_run(self, run: Run) -> int:
