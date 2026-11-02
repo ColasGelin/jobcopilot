@@ -91,10 +91,10 @@ def serve(
     port: int = typer.Option(8077),
 ):
     """Start the dashboard."""
-    from jobcopilot.web import create_app
+    from jobcopilot import web
 
     settings = load_settings(ctx.obj / "config.yaml")
-    uvicorn.run(create_app(settings.db_path), host=host, port=port)
+    uvicorn.run(web.create_app(settings.db_path, min_score=settings.min_score), host=host, port=port)
 
 
 @app.command("import-legacy")

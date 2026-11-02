@@ -159,3 +159,24 @@ def test_offer_button_exists(db_path):
     j = make_job(1)
     seed(db_path, [(j, 80)])
     assert '"status": "offer"' in client(db_path).get("/").text
+
+
+def test_today_hides_jobs_below_min_score(db_path):
+    good, weak = make_job(1, company="GoodCo"), make_job(2, company="WeakCo")
+    seed(db_path, [(good, 60), (weak, 59)])
+    body = client(db_path).get("/").text
+    assert "GoodCo" in body and "WeakCo" not in body
+    assert "Show 1 lower-scored job" in body
+
+
+def test_today_all_param_shows_hidden_jobs(db_path):
+    weak = make_job(2, company="WeakCo")
+    seed(db_path, [(weak, 40)])
+    assert "WeakCo" in client(db_path).get("/?all=1").text
+
+
+def test_min_score_is_configurable(db_path):
+    j = make_job(1, company="MidCo")
+    seed(db_path, [(j, 70)])
+    app = create_app(db_path, clock=lambda: NOW, min_score=75)
+    assert "MidCo" not in TestClient(app, base_url="http://localhost").get("/").text

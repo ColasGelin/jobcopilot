@@ -65,3 +65,14 @@ def test_cli_serve_uses_local_defaults(monkeypatch, tmp_path):
     result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "serve"])
     assert result.exit_code == 0, result.output
     assert captured == {"host": "127.0.0.1", "port": 8077}
+
+
+def test_cli_serve_passes_min_score(monkeypatch, tmp_path):
+    (tmp_path / "config.yaml").write_text("min_score: 70\n")
+    captured = {}
+    monkeypatch.setattr(cli.uvicorn, "run", lambda app, host, port: None)
+    import jobcopilot.web as web
+    real = web.create_app
+    monkeypatch.setattr(web, "create_app", lambda db_path, **kw: captured.update(kw) or real(db_path, **kw))
+    RUNNER.invoke(cli.app, ["--home", str(tmp_path), "serve"])
+    assert captured.get("min_score") == 70

@@ -11,6 +11,9 @@
   {% for m in matches %}
     {% include "_card.html" %}
   {% else %}
-    <p class="empty">No matches yet{% if day %} for {{ day }}{% endif %}. They appear after the daily run.</p>
+    <p class="empty">No matches{% if hidden %} scoring {{ min_score }}+{% endif %} yet{% if day %} for {{ day }}{% endif %}. They appear after the daily run.</p>
   {% endfor %}
+  {% if hidden %}
+    <p class="empty"><a href="/?day={{ day }}&all=1">Show {{ hidden }} lower-scored job{{ "s" if hidden > 1 }} (under {{ min_score }})</a></p>
+  {% endif %}
 {% endblock %}

@@ -46,6 +46,7 @@ def create_app(
     db_path: Path,
     clock: Callable[[], datetime] = now_local,
     allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1"),
+    min_score: int = 60,
 ) -> FastAPI:
     app = FastAPI(title="jobcopilot", docs_url=None, redoc_url=None, openapi_url=None)
     # No auth by design, so: refuse foreign Host headers (DNS rebinding) ...
@@ -60,7 +61,7 @@ def create_app(
         return DB(db_path)  # one connection per request; the daemon writes to the same file
 
     @app.get("/", response_class=HTMLResponse)
-    def today(request: Request, day: str | None = None):
+    def today(request: Request, day: str | None = None, all: bool = False):
         store = db()
         notice = None
         parsed = None
@@ -71,6 +72,9 @@ def create_app(
                 notice = f"Invalid date {day!r}; showing the latest matches."
         day = parsed or store.latest_match_day()
         matches = store.matches_for_day(day) if day else []
+        hidden = 0 if all else sum(1 for m in matches if m.evaluation.score < min_score)
+        if not all:
+            matches = [m for m in matches if m.evaluation.score >= min_score]
         return templates.TemplateResponse(
             request,
             "today.html",
@@ -79,6 +83,8 @@ def create_app(
                 "prev_day": _shift(day, -1) if day else None,
                 "next_day": _shift(day, 1) if day else None,
                 "notice": notice,
+                "hidden": hidden,
+                "min_score": min_score,
                 "matches": matches,
                 "follow_ups": store.follow_up_due_ids(clock()),
                 "active": "today",
