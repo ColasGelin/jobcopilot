@@ -12,11 +12,13 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.templating import Jinja2Templates
 
+from jobcopilot.config import CompanyToCheck
 from jobcopilot.db import DB
 from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
 
 HERE = Path(__file__).parent
+COMPANY_RECHECK_DAYS = 7
 
 
 def duration(run: Run) -> str:
@@ -47,6 +49,7 @@ def create_app(
     clock: Callable[[], datetime] = now_local,
     allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1"),
     min_score: int = 60,
+    companies: list[CompanyToCheck] | None = None,
 ) -> FastAPI:
     app = FastAPI(title="jobcopilot", docs_url=None, redoc_url=None, openapi_url=None)
     # No auth by design, so: refuse foreign Host headers (DNS rebinding) ...
@@ -126,5 +129,39 @@ def create_app(
     @app.get("/runs", response_class=HTMLResponse)
     def runs(request: Request):
         return templates.TemplateResponse(request, "runs.html", {"runs": db().list_runs(), "active": "runs"})
+
+    companies = companies or []
+    by_name = {c.name: c for c in companies}
+
+    def company_row(c: CompanyToCheck, checks: dict[str, datetime], now: datetime) -> dict:
+        checked = checks.get(c.name)
+        days = (now.date() - checked.date()).days if checked else None
+        return {"c": c, "days": days, "due": days is None or days >= COMPANY_RECHECK_DAYS}
+
+    def require_htmx(request: Request) -> None:
+        if request.headers.get("hx-request") != "true":
+            raise HTTPException(403, "requests must come from the dashboard")
+
+    @app.get("/companies", response_class=HTMLResponse)
+    def companies_page(request: Request):
+        now, checks = clock(), db().company_checks()
+        groups: dict[str, list[dict]] = {}
+        for c in companies:
+            groups.setdefault(c.category, []).append(company_row(c, checks, now))
+        for rows in groups.values():  # never checked first, then the longest ago
+            rows.sort(key=lambda r: -1 if r["days"] is None else -r["days"])
+        due = sum(r["due"] for rows in groups.values() for r in rows)
+        return templates.TemplateResponse(
+            request, "companies.html", {"groups": groups, "due": due, "recheck_days": COMPANY_RECHECK_DAYS, "active": "companies"}
+        )
+
+    @app.post("/companies/{name}/checked", response_class=HTMLResponse)
+    def mark_checked(request: Request, name: str):
+        require_htmx(request)
+        if name not in by_name:
+            raise HTTPException(404, "unknown company")
+        store, now = db(), clock()
+        store.mark_company_checked(name, now)
+        return templates.TemplateResponse(request, "_company.html", {"r": company_row(by_name[name], store.company_checks(), now)})
 
     return app

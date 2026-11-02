@@ -25,3 +25,9 @@ def test_default_lookback_covers_delayed_feeds(tmp_path):
 def test_example_config_loads_with_watchlist():
     s = load_settings(ROOT / "config.example.yaml")
     assert len(s.watchlist) >= 3 and "watchlist" in s.sources and s.max_scored_per_run == 150
+
+
+def test_example_config_has_companies_to_check():
+    s = load_settings(ROOT / "config.example.yaml")
+    assert any(c.name == "Example Labs" for c in s.companies_to_check)
+    assert all(c.url.startswith("https://") for c in s.companies_to_check)

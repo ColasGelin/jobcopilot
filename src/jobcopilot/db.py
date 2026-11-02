@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS applications (
     job_id TEXT PRIMARY KEY REFERENCES jobs(id), status TEXT NOT NULL, applied_at TEXT,
     next_follow_up_at TEXT, notes TEXT, updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS company_checks (name TEXT PRIMARY KEY, checked_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
     kept INTEGER, scored INTEGER, drafted INTEGER, failed_sources TEXT, error TEXT
@@ -224,6 +225,18 @@ class DB:
     def list_runs(self, limit: int = 30) -> list[tuple[int, Run]]:
         ids = [r[0] for r in self.conn.execute("SELECT id FROM runs ORDER BY started_at DESC, id DESC LIMIT ?", (limit,))]
         return [(i, self.get_run(i)) for i in ids]
+
+    # --- companies to check ---------------------------------------------------
+    def company_checks(self) -> dict[str, datetime]:
+        return {r["name"]: _dt(r["checked_at"]) for r in self.conn.execute("SELECT name, checked_at FROM company_checks")}
+
+    def mark_company_checked(self, name: str, now: datetime) -> None:
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO company_checks (name, checked_at) VALUES (?, ?)"
+                " ON CONFLICT(name) DO UPDATE SET checked_at = excluded.checked_at",
+                (name, _iso(now)),
+            )
 
     # --- runs ---------------------------------------------------------------
     def start_run(self, run: Run) -> int:

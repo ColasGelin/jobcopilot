@@ -37,6 +37,16 @@ class WatchlistEntry(BaseModel):
     slug: str
 
 
+class CompanyToCheck(BaseModel):
+    """A company worth checking by hand (its job board can't be read automatically)."""
+
+    name: str
+    url: str
+    why: str = ""
+    location: str = ""
+    category: str = "Other"
+
+
 class Settings(BaseModel):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     top_n: int = 10
@@ -48,6 +58,7 @@ class Settings(BaseModel):
     himalayas_queries: list[str] = Field(default_factory=lambda: ["python", "AI engineer", "LLM", "machine learning"])
     himalayas_country: str = "Spain"
     watchlist: list[WatchlistEntry] = Field(default_factory=list)
+    companies_to_check: list[CompanyToCheck] = Field(default_factory=list)
     # Caps LLM usage when a source (e.g. a new watchlist) brings many jobs at once; the rest wait for the next run.
     max_scored_per_run: int = 150
     data_dir: Path

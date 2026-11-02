@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Companies to check</h1>
+  <p class="meta">Great companies whose job boards can't be read automatically. Open their careers page, then press
+    <b>Checked</b>. Companies not checked for {{ recheck_days }} days are highlighted{% if due %} ({{ due }} due){% endif %}.</p>
+  {% for category, rows in groups.items() %}
+    <h2 class="section">{{ category }}</h2>
+    {% for r in rows %}{% include "_company.html" %}{% endfor %}
+  {% else %}
+    <p class="empty">No companies configured. Add a <code>companies_to_check</code> list to config.yaml.</p>
+  {% endfor %}
+{% endblock %}

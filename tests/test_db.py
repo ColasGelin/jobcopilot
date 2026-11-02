@@ -157,3 +157,10 @@ def test_list_runs_newest_first(db):
 def test_file_db_uses_wal(tmp_path):
     d = DB(tmp_path / "x.db")
     assert d.conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+
+def test_company_checks_roundtrip(db):
+    assert db.company_checks() == {}
+    db.mark_company_checked("Example Labs", NOW)
+    db.mark_company_checked("Example Labs", NOW + timedelta(days=1))
+    assert db.company_checks() == {"Example Labs": NOW + timedelta(days=1)}

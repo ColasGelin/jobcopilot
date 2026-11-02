@@ -43,3 +43,5 @@ details summary { cursor: pointer; color: var(--accent); margin-top: 6px; }
 table { width: 100%; border-collapse: collapse; background: var(--panel); }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
 .error { color: #c0392b; }
+h2.section { margin: 20px 0 8px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.card.company.due { border-color: var(--good); box-shadow: inset 4px 0 0 var(--good); }

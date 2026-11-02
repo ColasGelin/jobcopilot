@@ -1,0 +1,15 @@
+<article class="card company{% if r.due %} due{% endif %}">
+  <div class="card-head">
+    <div>
+      <h2>{% if safe_url(r.c.url) %}<a href="{{ safe_url(r.c.url) }}" target="_blank" rel="noopener noreferrer">{{ r.c.name }} ↗</a>{% else %}{{ r.c.name }}{% endif %}</h2>
+      <p class="meta">{{ r.c.location }}</p>
+    </div>
+    <span class="status">
+      {% if r.days is none %}Never checked{% elif r.days == 0 %}Checked today{% elif r.days == 1 %}Checked yesterday{% else %}Checked {{ r.days }} days ago{% endif %}
+    </span>
+  </div>
+  {% if r.c.why %}<p>{{ r.c.why }}</p>{% endif %}
+  <div class="actions">
+    <button hx-post="/companies/{{ r.c.name | urlencode }}/checked" hx-target="closest article" hx-swap="outerHTML">Checked</button>
+  </div>
+</article>
