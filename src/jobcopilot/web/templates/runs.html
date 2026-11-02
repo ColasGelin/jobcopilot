@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Runs</h1>
+  {% if not runs %}
+    <p class="empty">No runs yet. The daemon runs every day at 08:30.</p>
+  {% else %}
+    <table>
+      <thead><tr><th>Started</th><th>Duration</th><th>Fetched</th><th>New</th><th>Kept</th><th>Scored</th><th>Drafted</th><th>Problems</th></tr></thead>
+      <tbody>
+      {% for id, r in runs %}
+        <tr>
+          <td>{{ r.started_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ duration(r) }}</td>
+          <td>{{ r.fetched }}</td><td>{{ r.new }}</td><td>{{ r.kept }}</td><td>{{ r.scored }}</td><td>{{ r.drafted }}</td>
+          <td>
+            {% if r.failed_sources %}Failed sources: {{ r.failed_sources | join(", ") }}<br>{% endif %}
+            {% if r.error %}<span class="error">{{ r.error }}</span>{% endif %}
+            {% if not r.finished_at %}<em>running or interrupted</em>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

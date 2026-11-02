@@ -8,6 +8,7 @@ from datetime import datetime, time
 from pathlib import Path
 
 import typer
+import uvicorn
 
 from jobcopilot import schedule
 from jobcopilot.config import load_profile, load_settings
@@ -81,6 +82,19 @@ def daemon(ctx: typer.Context, at: str = typer.Option("08:30", help="Daily run t
 
     typer.echo(f"jobcopilot daemon: daily run at {run_at.strftime('%H:%M')} (checks every minute)")
     loop(run_once, state, run_at)
+
+
+@app.command()
+def serve(
+    ctx: typer.Context,
+    host: str = typer.Option("127.0.0.1", help="Interface to bind. Keep 127.0.0.1 unless inside a container."),
+    port: int = typer.Option(8077),
+):
+    """Start the dashboard."""
+    from jobcopilot.web import create_app
+
+    settings = load_settings(ctx.obj / "config.yaml")
+    uvicorn.run(create_app(settings.db_path), host=host, port=port)
 
 
 @app.command("import-legacy")

@@ -82,3 +82,35 @@ def test_feed_content_is_escaped(db_path):
 def test_htmx_served_locally(db_path):
     r = client(db_path).get("/static/htmx.min.js")
     assert r.status_code == 200 and "htmx" in r.text
+
+
+def test_pipeline_groups_and_flags_follow_up(db_path):
+    applied, interview = make_job(1, company="AppliedCo"), make_job(2, company="InterviewCo")
+    db = seed(db_path, [(applied, 70), (interview, 80)])
+    db.set_status(applied.id, "applied", NOW - timedelta(days=6))
+    db.set_status(interview.id, "interview", NOW)
+    body = client(db_path).get("/pipeline").text
+    assert "AppliedCo" in body and "InterviewCo" in body
+    assert "Follow up" in body
+    assert body.index("<h2>Applied (1)</h2>") < body.index("AppliedCo") < body.index("<h2>Interview (1)</h2>")
+
+
+def test_pipeline_empty_state(db_path):
+    DB(db_path)
+    r = client(db_path).get("/pipeline")
+    assert r.status_code == 200 and "Nothing here yet" in r.text
+
+
+def test_runs_lists_failed_sources_and_errors(db_path):
+    db = DB(db_path)
+    rid = db.start_run(Run(started_at=NOW))
+    db.finish_run(rid, Run(started_at=NOW, finished_at=NOW + timedelta(seconds=95), fetched=578, new=12, kept=5,
+                           failed_sources=["remoteok"], error="Claude Code is logged out"))
+    body = client(db_path).get("/runs").text
+    assert "578" in body and "remoteok" in body and "logged out" in body and "1m 35s" in body
+
+
+def test_runs_empty_state(db_path):
+    DB(db_path)
+    r = client(db_path).get("/runs")
+    assert r.status_code == 200 and "No runs yet" in r.text

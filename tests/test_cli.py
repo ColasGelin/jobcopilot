@@ -57,3 +57,11 @@ def test_cli_daemon_starts_loop_with_schedule(monkeypatch, tmp_path):
 def test_cli_daemon_rejects_bad_time(tmp_path):
     result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "daemon", "--at", "25:00"])
     assert result.exit_code != 0
+
+
+def test_cli_serve_uses_local_defaults(monkeypatch, tmp_path):
+    captured = {}
+    monkeypatch.setattr(cli.uvicorn, "run", lambda app, host, port: captured.update(host=host, port=port))
+    result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "serve"])
+    assert result.exit_code == 0, result.output
+    assert captured == {"host": "127.0.0.1", "port": 8077}

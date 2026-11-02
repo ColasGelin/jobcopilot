@@ -12,10 +12,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from jobcopilot.db import DB
-from jobcopilot.models import STATUSES
+from jobcopilot.models import STATUSES, Run
 
 HERE = Path(__file__).parent
 SOURCE_NAMES = {"remotive": "Remotive", "remoteok": "Remote OK", "arbeitnow": "Arbeitnow", "hn": "Hacker News", "legacy": "Imported"}
+
+
+def duration(run: Run) -> str:
+    if not run.finished_at:
+        return "—"
+    seconds = int((run.finished_at - run.started_at).total_seconds())
+    return f"{seconds // 60}m {seconds % 60:02d}s" if seconds >= 60 else f"{seconds}s"
 
 
 def now_local() -> datetime:
@@ -27,6 +34,7 @@ def create_app(db_path: Path, clock: Callable[[], datetime] = now_local) -> Fast
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     templates = Jinja2Templates(directory=HERE / "templates")  # autoescape is on for .html
     templates.env.globals["source_name"] = lambda s: SOURCE_NAMES.get(s, s)
+    templates.env.globals["duration"] = duration
 
     def db() -> DB:
         return DB(db_path)  # one connection per request; the daemon writes to the same file
@@ -60,5 +68,24 @@ def create_app(db_path: Path, clock: Callable[[], datetime] = now_local) -> Fast
         return templates.TemplateResponse(
             request, "_card.html", {"m": store.match(job_id), "follow_ups": store.follow_up_due_ids(clock())}
         )
+
+    @app.get("/pipeline", response_class=HTMLResponse)
+    def pipeline(request: Request):
+        store = db()
+        groups = store.pipeline()
+        return templates.TemplateResponse(
+            request,
+            "pipeline.html",
+            {
+                "groups": groups,
+                "total": sum(len(v) for v in groups.values()),
+                "follow_ups": store.follow_up_due_ids(clock()),
+                "active": "pipeline",
+            },
+        )
+
+    @app.get("/runs", response_class=HTMLResponse)
+    def runs(request: Request):
+        return templates.TemplateResponse(request, "runs.html", {"runs": db().list_runs(), "active": "runs"})
 
     return app
