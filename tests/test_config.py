@@ -30,4 +30,5 @@ def test_example_config_loads_with_watchlist():
 def test_example_config_has_companies_to_check():
     s = load_settings(ROOT / "config.example.yaml")
     assert any(c.name == "Example Labs" for c in s.companies_to_check)
-    assert all(c.url.startswith("https://") for c in s.companies_to_check)
+    assert all(c.url is None or c.url.startswith("https://") for c in s.companies_to_check)
+    assert any(c.name == "Sample Studio" and c.url is None for c in s.companies_to_check)

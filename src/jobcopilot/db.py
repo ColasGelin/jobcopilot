@@ -238,6 +238,10 @@ class DB:
                 (name, _iso(now)),
             )
 
+    def unmark_company(self, name: str) -> None:
+        with self.conn:
+            self.conn.execute("DELETE FROM company_checks WHERE name = ?", (name,))
+
     # --- runs ---------------------------------------------------------------
     def start_run(self, run: Run) -> int:
         with self.conn:

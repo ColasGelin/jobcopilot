@@ -18,7 +18,6 @@ from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
 
 HERE = Path(__file__).parent
-COMPANY_RECHECK_DAYS = 7
 
 
 def duration(run: Run) -> str:
@@ -133,10 +132,8 @@ def create_app(
     companies = companies or []
     by_name = {c.name: c for c in companies}
 
-    def company_row(c: CompanyToCheck, checks: dict[str, datetime], now: datetime) -> dict:
-        checked = checks.get(c.name)
-        days = (now.date() - checked.date()).days if checked else None
-        return {"c": c, "days": days, "due": days is None or days >= COMPANY_RECHECK_DAYS}
+    def company_row(c: CompanyToCheck, checks: dict[str, datetime]) -> dict:
+        return {"c": c, "done_at": checks.get(c.name)}
 
     def require_htmx(request: Request) -> None:
         if request.headers.get("hx-request") != "true":
@@ -144,24 +141,27 @@ def create_app(
 
     @app.get("/companies", response_class=HTMLResponse)
     def companies_page(request: Request):
-        now, checks = clock(), db().company_checks()
+        checks = db().company_checks()
         groups: dict[str, list[dict]] = {}
         for c in companies:
-            groups.setdefault(c.category, []).append(company_row(c, checks, now))
-        for rows in groups.values():  # never checked first, then the longest ago
-            rows.sort(key=lambda r: -1 if r["days"] is None else -r["days"])
-        due = sum(r["due"] for rows in groups.values() for r in rows)
+            groups.setdefault(c.category, []).append(company_row(c, checks))
+        for rows in groups.values():  # to-do first (config order), done last
+            rows.sort(key=lambda r: r["done_at"] is not None)
+        done = sum(1 for c in companies if c.name in checks)
         return templates.TemplateResponse(
-            request, "companies.html", {"groups": groups, "due": due, "recheck_days": COMPANY_RECHECK_DAYS, "active": "companies"}
+            request, "companies.html", {"groups": groups, "done": done, "total": len(companies), "active": "companies"}
         )
 
-    @app.post("/companies/{name}/checked", response_class=HTMLResponse)
-    def mark_checked(request: Request, name: str):
+    @app.post("/companies/{name}/toggle", response_class=HTMLResponse)
+    def toggle_company(request: Request, name: str):
         require_htmx(request)
         if name not in by_name:
             raise HTTPException(404, "unknown company")
-        store, now = db(), clock()
-        store.mark_company_checked(name, now)
-        return templates.TemplateResponse(request, "_company.html", {"r": company_row(by_name[name], store.company_checks(), now)})
+        store = db()
+        if name in store.company_checks():
+            store.unmark_company(name)
+        else:
+            store.mark_company_checked(name, clock())
+        return templates.TemplateResponse(request, "_company.html", {"r": company_row(by_name[name], store.company_checks())})
 
     return app

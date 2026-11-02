@@ -41,7 +41,7 @@ class CompanyToCheck(BaseModel):
     """A company worth checking by hand (its job board can't be read automatically)."""
 
     name: str
-    url: str
+    url: str | None = None  # leave out when there's no known careers page
     why: str = ""
     location: str = ""
     category: str = "Other"

@@ -164,3 +164,9 @@ def test_company_checks_roundtrip(db):
     db.mark_company_checked("Example Labs", NOW)
     db.mark_company_checked("Example Labs", NOW + timedelta(days=1))
     assert db.company_checks() == {"Example Labs": NOW + timedelta(days=1)}
+
+
+def test_unmark_company(db):
+    db.mark_company_checked("A", NOW)
+    db.unmark_company("A")
+    assert db.company_checks() == {}

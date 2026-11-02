@@ -190,6 +190,7 @@ COMPANIES = [
     CompanyToCheck(name="Example Labs", url="https://example.com/careers", why="Europe's best-known LLM lab", location="Paris", category="AI labs"),
     CompanyToCheck(name="Demo Studio", url="https://example.org/careers", why="Málaga-based AI design tools", location="Málaga", category="Spain"),
     CompanyToCheck(name="Bad Link", url="javascript:alert(1)", why="x", location="x", category="Spain"),
+    CompanyToCheck(name="Sample Studio", location="Madrid", category="Spain"),
 ]
 
 
@@ -203,39 +204,49 @@ def test_companies_page_lists_companies_by_category(db_path):
     body = companies_client(db_path).get("/companies").text
     assert "Example Labs" in body and "Europe&#39;s best-known LLM lab" in body
     assert 'href="https://example.com/careers"' in body and 'href="javascript:' not in body
-    assert body.index("AI labs") < body.index("Example Labs") and "Never checked" in body
+    assert body.index("AI labs") < body.index("Example Labs")
+    assert "0 of 4 done" in body
 
 
-def test_mark_company_checked_persists_and_clears_due(db_path):
+def test_company_without_url_shows_name_only(db_path):
+    DB(db_path)
+    body = companies_client(db_path).get("/companies").text
+    assert "Sample Studio" in body and "find their careers page" in body
+
+
+def test_toggle_marks_done_then_undone(db_path):
     DB(db_path)
     c = companies_client(db_path)
-    r = c.post("/companies/Example%20Labs/checked")
-    assert r.status_code == 200 and "Checked today" in r.text
-    assert DB(db_path).company_checks()["Example Labs"] == NOW
+    r = c.post("/companies/Example%20Labs/toggle")
+    assert r.status_code == 200 and "Done" in r.text and "aria-pressed=\"true\"" in r.text
+    assert "Example Labs" in DB(db_path).company_checks()
+    r = c.post("/companies/Example%20Labs/toggle")
+    assert "aria-pressed=\"false\"" in r.text
+    assert "Example Labs" not in DB(db_path).company_checks()
 
 
-def test_company_due_after_seven_days(db_path):
-    DB(db_path).mark_company_checked("Example Labs", NOW - timedelta(days=8))
-    body = companies_client(db_path).get("/companies").text
-    assert "Checked 8 days ago" in body and "due" in body
-
-
-def test_overdue_companies_sorted_first(db_path):
+def test_done_companies_go_last_and_are_counted(db_path):
     DB(db_path).mark_company_checked("Demo Studio", NOW)
     body = companies_client(db_path).get("/companies").text
-    # within "Spain": never-checked "Bad Link" before freshly checked "Demo Studio"
-    assert body.index("Bad Link") < body.index("Demo Studio")
+    assert body.index("Sample Studio") < body.index("Demo Studio")
+    assert "1 of 4 done" in body
 
 
-def test_mark_unknown_company_404(db_path):
+def test_done_stays_done_after_a_week(db_path):
+    DB(db_path).mark_company_checked("Example Labs", NOW - timedelta(days=30))
+    body = companies_client(db_path).get("/companies").text
+    assert "1 of 4 done" in body
+
+
+def test_toggle_unknown_company_404(db_path):
     DB(db_path)
-    assert companies_client(db_path).post("/companies/Nope/checked").status_code == 404
+    assert companies_client(db_path).post("/companies/Nope/toggle").status_code == 404
 
 
-def test_mark_company_requires_htmx_header(db_path):
+def test_toggle_requires_htmx_header(db_path):
     DB(db_path)
     app = create_app(db_path, clock=lambda: NOW, companies=COMPANIES)
-    assert TestClient(app, base_url="http://localhost").post("/companies/Example%20Labs/checked").status_code == 403
+    assert TestClient(app, base_url="http://localhost").post("/companies/Example%20Labs/toggle").status_code == 403
 
 
 def test_companies_empty_state(db_path):

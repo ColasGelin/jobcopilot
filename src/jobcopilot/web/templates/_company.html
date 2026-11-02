@@ -1,15 +1,16 @@
-<article class="card company{% if r.due %} due{% endif %}">
+{% set done = r.done_at is not none %}
+<article class="card company{% if done %} done{% endif %}">
   <div class="card-head">
+    <button class="check" aria-pressed="{{ 'true' if done else 'false' }}" title="{{ 'Mark as not done' if done else 'Mark as done' }}"
+            hx-post="/companies/{{ r.c.name | urlencode }}/toggle" hx-target="closest article" hx-swap="outerHTML">{{ "✓" if done else "" }}</button>
     <div>
-      <h2>{% if safe_url(r.c.url) %}<a href="{{ safe_url(r.c.url) }}" target="_blank" rel="noopener noreferrer">{{ r.c.name }} ↗</a>{% else %}{{ r.c.name }}{% endif %}</h2>
-      <p class="meta">{{ r.c.location }}</p>
+      <h2>
+        {% if r.c.url and safe_url(r.c.url) %}<a href="{{ safe_url(r.c.url) }}" target="_blank" rel="noopener noreferrer">{{ r.c.name }} ↗</a>
+        {% else %}{{ r.c.name }} <span class="muted-text">· find their careers page</span>{% endif %}
+      </h2>
+      {% if r.c.location %}<p class="meta">{{ r.c.location }}</p>{% endif %}
+      {% if r.c.why %}<p class="why">{{ r.c.why }}</p>{% endif %}
     </div>
-    <span class="status">
-      {% if r.days is none %}Never checked{% elif r.days == 0 %}Checked today{% elif r.days == 1 %}Checked yesterday{% else %}Checked {{ r.days }} days ago{% endif %}
-    </span>
-  </div>
-  {% if r.c.why %}<p>{{ r.c.why }}</p>{% endif %}
-  <div class="actions">
-    <button hx-post="/companies/{{ r.c.name | urlencode }}/checked" hx-target="closest article" hx-swap="outerHTML">Checked</button>
+    <span class="status">{% if done %}Done · {{ r.done_at.strftime("%d %b") }}{% else %}To do{% endif %}</span>
   </div>
 </article>
