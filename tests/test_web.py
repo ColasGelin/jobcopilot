@@ -1,0 +1,84 @@
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from fastapi.testclient import TestClient
+
+from conftest import make_job
+from jobcopilot.db import DB
+from jobcopilot.models import Draft, Evaluation, Run
+from jobcopilot.web import create_app
+
+NOW = datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture
+def db_path(tmp_path):
+    return tmp_path / "jobs.db"
+
+
+def seed(db_path, jobs_scores, seen_at=NOW, draft_for=()):
+    db = DB(db_path)
+    jobs = [j for j, _ in jobs_scores]
+    db.insert_jobs(jobs, seen_at)
+    for j, score in jobs_scores:
+        db.save_evaluation(Evaluation(job_id=j.id, score=score, fit_reasons=f"fit {j.company}", gaps="gap", model="m", prompt_version="v"))
+    for j in draft_for:
+        db.save_draft(Draft(job_id=j.id, cv_tweaks=["tweak"], cover_note=f"COVER {j.company}", outreach_message="HELLO", contact_hint="CTO", model="m", prompt_version="v"))
+    return db
+
+
+def client(db_path, now=NOW):
+    return TestClient(create_app(db_path, clock=lambda: now))
+
+
+def test_today_shows_matches_sorted(db_path):
+    low, high = make_job(1, company="LowCo"), make_job(2, company="HighCo")
+    seed(db_path, [(low, 61), (high, 90)], draft_for=[high])
+    body = client(db_path).get("/").text
+    assert body.index("HighCo") < body.index("LowCo")
+    assert "COVER HighCo" in body and "No draft" in body
+
+
+def test_today_empty_state(db_path):
+    r = client(db_path).get("/")
+    assert r.status_code == 200 and "No matches yet" in r.text
+
+
+def test_today_day_param(db_path):
+    old, new = make_job(1, company="OldCo"), make_job(2, company="NewCo")
+    seed(db_path, [(old, 70)], seen_at=NOW - timedelta(days=1))
+    seed(db_path, [(new, 70)])
+    body = client(db_path).get("/?day=2026-11-01").text
+    assert "OldCo" in body and "NewCo" not in body
+
+
+def test_status_change_returns_card_and_persists(db_path):
+    j = make_job(1, company="Acme")
+    seed(db_path, [(j, 80)])
+    r = client(db_path).post(f"/jobs/{j.id}/status", data={"status": "applied"})
+    assert r.status_code == 200 and "Acme" in r.text and "applied" in r.text
+    assert DB(db_path).status(j.id) == "applied"
+
+
+def test_status_unknown_job_404(db_path):
+    DB(db_path)
+    assert client(db_path).post("/jobs/nope/status", data={"status": "applied"}).status_code == 404
+
+
+def test_status_invalid_400(db_path):
+    j = make_job(1)
+    seed(db_path, [(j, 80)])
+    assert client(db_path).post(f"/jobs/{j.id}/status", data={"status": "ghosted"}).status_code == 400
+    assert DB(db_path).status(j.id) == "new"
+
+
+def test_feed_content_is_escaped(db_path):
+    j = make_job(1, title="<script>alert(1)</script>")
+    seed(db_path, [(j, 80)])
+    body = client(db_path).get("/").text
+    assert "&lt;script&gt;alert(1)" in body and "<script>alert(1)" not in body
+
+
+def test_htmx_served_locally(db_path):
+    r = client(db_path).get("/static/htmx.min.js")
+    assert r.status_code == 200 and "htmx" in r.text

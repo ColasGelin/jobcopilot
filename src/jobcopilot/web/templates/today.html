@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+  {% if day %}
+    <div class="day-nav">
+      <a href="/?day={{ prev_day }}">← {{ prev_day }}</a>
+      <h1>Matches · {{ day }}</h1>
+      <a href="/?day={{ next_day }}">{{ next_day }} →</a>
+    </div>
+  {% endif %}
+  {% for m in matches %}
+    {% include "_card.html" %}
+  {% else %}
+    <p class="empty">No matches yet{% if day %} for {{ day }}{% endif %}. They appear after the daily run.</p>
+  {% endfor %}
+{% endblock %}

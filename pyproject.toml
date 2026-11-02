@@ -3,7 +3,16 @@ name = "jobcopilot"
 version = "0.1.0"
 description = "Local job-search copilot: collects, filters, scores and drafts applications with an LLM."
 requires-python = ">=3.11"
-dependencies = ["httpx", "pydantic>=2", "pyyaml", "typer"]
+dependencies = [
+    "fastapi>=0.162.0",
+    "httpx",
+    "jinja2>=3.1.6",
+    "pydantic>=2",
+    "python-multipart>=0.0.33",
+    "pyyaml",
+    "typer",
+    "uvicorn>=0.54.0",
+]
 
 [project.scripts]
 jobcopilot = "jobcopilot.cli:app"
@@ -20,3 +29,4 @@ packages = ["src/jobcopilot"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]

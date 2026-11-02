@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jobcopilot</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header>
+    <strong>jobcopilot</strong>
+    <nav>
+      <a href="/" {% if active == 'today' %}aria-current="page"{% endif %}>Today</a>
+      <a href="/pipeline" {% if active == 'pipeline' %}aria-current="page"{% endif %}>Pipeline</a>
+      <a href="/runs" {% if active == 'runs' %}aria-current="page"{% endif %}>Runs</a>
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <script>
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-copy]");
+      if (!btn) return;
+      const text = document.getElementById(btn.dataset.copy).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = "Copied";
+        setTimeout(() => (btn.textContent = "Copy"), 1200);
+      });
+    });
+  </script>
+</body>
+</html>
