@@ -11,7 +11,7 @@ services:
       TZ: Europe/Madrid
     env_file: .env          # CLAUDE_CODE_OAUTH_TOKEN=... (git-ignored)
     volumes:
-      - ./data:/data        # profile.yaml, config.yaml, jobs.db, reports/, logs/
+      - ./data:/data        # profile.yaml, config.yaml, cv.yaml, jobs.db, cvs/, reports/, logs/
     command: ["daemon", "--at", "08:30"]
 
   web:
@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: Europe/Madrid
+    env_file: .env          # the dashboard calls Claude when you click "Tailor CV"
     volumes:
       - ./data:/data
     command: ["serve", "--host", "0.0.0.0", "--port", "8077"]   # 0.0.0.0 inside the container only
