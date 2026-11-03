@@ -174,3 +174,16 @@ def test_cli_serve_passes_preparer_factory_only_with_profile(monkeypatch, tmp_pa
     RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "serve"])
     preparer = captured["preparer_factory"]()
     assert preparer.profile.summary == "me" and preparer.settings.data_dir == tmp_path
+
+
+def test_cli_agent_install_uninstall_and_run(monkeypatch, tmp_path):
+    from jobcopilot.agent import launchd, loop
+
+    calls = []
+    monkeypatch.setattr(launchd, "install", lambda uv, repo, dashboard: calls.append(("install", dashboard)) or tmp_path / "x.plist")
+    monkeypatch.setattr(launchd, "uninstall", lambda: calls.append(("uninstall",)))
+    monkeypatch.setattr(loop, "run_agent", lambda dashboard: calls.append(("run", dashboard)))
+    assert RUNNER.invoke(cli.app, ["agent", "--install"]).exit_code == 0
+    assert RUNNER.invoke(cli.app, ["agent", "--uninstall"]).exit_code == 0
+    assert RUNNER.invoke(cli.app, ["agent", "--dashboard", "http://localhost:9000"]).exit_code == 0
+    assert calls == [("install", "http://localhost:8077"), ("uninstall",), ("run", "http://localhost:9000")]

@@ -1,0 +1,15 @@
+<!doctype html><html><body>
+<script>window.submitted = false; window.clicked = [];</script>
+<form id="f" onsubmit="window.submitted = true; return false">
+  <label for="fname">First name</label><input id="fname">
+  <label for="email">Email</label><input id="email" type="email">
+  <label for="why">Why us?</label><textarea id="why"></textarea>
+  <label for="visa">Visa</label><select id="visa"><option value="">Select…</option><option value="1">Yes</option><option value="0">No</option></select>
+  <fieldset><legend>Relocate?</legend><label><input type="radio" name="reloc" value="y"> Yes</label><label><input type="radio" name="reloc" value="n"> No</label></fieldset>
+  <label><input type="checkbox" name="langs" value="en"> English</label><label><input type="checkbox" name="langs" value="es"> Spanish</label>
+  <label for="cv">Resume/CV</label><input type="file" id="cv">
+  <label for="renamed">Phone</label><input id="renamed" type="tel">
+  <button type="submit" onclick="window.clicked.push('submit')">Submit application</button>
+</form>
+<iframe id="emb" src="fill_iframe.html"></iframe>
+</body></html>

@@ -1,4 +1,4 @@
-"""Command-line entry point: `jobcopilot run`, `serve`, `cv`, `import-legacy`, `install-schedule`, `uninstall-schedule`."""
+"""Command-line entry point: `jobcopilot run`, `serve`, `cv`, `agent`, `import-legacy`, `install-schedule`, `uninstall-schedule`."""
 
 from __future__ import annotations
 
@@ -188,6 +188,26 @@ def cv(ctx: typer.Context, job: str = typer.Option(None, help="Job id: tailor th
         raise typer.Exit(1)
     pages = _write_pdf(settings.cvs_dir / cv_filename(target), content)
     db.save_tailored_cv(job, content, pages, settings.llm.draft_model, TAILOR_PROMPT_VERSION)
+
+
+@app.command()
+def agent(
+    dashboard: str = typer.Option("http://localhost:8077", help="Dashboard URL (through the SSH tunnel)."),
+    install: bool = typer.Option(False, "--install", help="Start the agent at login (macOS LaunchAgent)."),
+    uninstall: bool = typer.Option(False, "--uninstall", help="Remove the LaunchAgent."),
+):
+    """On the Mac: fill application forms in a visible browser when you click Fill form (never submits)."""
+    from jobcopilot.agent import launchd, loop
+
+    if install:
+        repo = Path(__file__).resolve().parents[2]
+        path = launchd.install(shutil.which("uv") or "uv", repo, dashboard)
+        typer.echo(f"Agent installed ({path}); it starts at login. Log: {launchd.LOG}")
+    elif uninstall:
+        launchd.uninstall()
+        typer.echo("Agent removed.")
+    else:
+        loop.run_agent(dashboard)
 
 
 @app.command("import-legacy")
