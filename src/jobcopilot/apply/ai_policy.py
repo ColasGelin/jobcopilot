@@ -27,3 +27,14 @@ def find_ai_ban(page_text: str) -> str | None:
     end_match = _SENTENCE_END.search(page_text, m.end())
     end = end_match.end() if end_match else len(page_text)
     return page_text[start:end].strip()[:MAX_QUOTE]
+
+
+_POLICY_FIELD = re.compile(r"\b(?:AI|artificial intelligence)\s+(?:polic|guideline|usage|use polic)", re.I)
+
+
+def find_ai_policy_field(fields) -> str | None:
+    """A form question about the company's AI policy (its rules are often on a linked page we can't read)."""
+    for f in fields:
+        if _POLICY_FIELD.search(f.label):
+            return f"{f.label}: {f.description}".strip(": ")[:MAX_QUOTE]
+    return None

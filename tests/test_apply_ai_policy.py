@@ -28,3 +28,14 @@ def test_ai_ban_not_found(text):
 def test_ai_ban_quote_is_trimmed():
     long = "Do not use AI " + "really " * 100 + "ever."
     assert len(find_ai_ban(long)) <= 300
+
+
+def test_ai_policy_field_counts_as_a_ban():
+    from jobcopilot.apply.ai_policy import find_ai_policy_field
+    from jobcopilot.apply.models import FormField
+
+    policy = FormField(key="q", selector="#q", label="AI Policy for Application", kind="select", options=["Yes", "No"],
+                       description="We invite you to review our AI partnership guidelines for candidates and confirm by selecting Yes.")
+    other = FormField(key="w", selector="#w", label="Why us?", kind="textarea")
+    quote = find_ai_policy_field([other, policy])
+    assert quote.startswith("AI Policy for Application: We invite you to review") and find_ai_policy_field([other]) is None

@@ -2,7 +2,7 @@
 () => {
   const SKIP = new Set(["hidden", "submit", "button", "image", "reset", "password"]);
   const KIND = { email: "email", tel: "tel", url: "url", file: "file", radio: "radio", checkbox: "checkbox" };
-  const clean = (s) => (s || "").replace(/\s+/g, " ").replace(/\s*\*\s*$/, "").trim();
+  const clean = (s) => (s || "").replace(/[✱*]/g, " ").replace(/\s+/g, " ").trim();
   const visible = (el) => {
     const s = getComputedStyle(el);
     if (s.display === "none" || s.visibility === "hidden") return false;
@@ -25,9 +25,15 @@
     }
     return "";
   };
+  // A label that wraps its control would also contain the control's text (a select's options): drop it.
+  const labelText = (label) => {
+    const copy = label.cloneNode(true);
+    copy.querySelectorAll("select, textarea, input, button").forEach((c) => c.remove());
+    return clean(copy.innerText || copy.textContent);
+  };
   const labelOf = (el) => {
     if (el.labels && el.labels.length) {
-      const t = textOf(el.labels[0]);
+      const t = labelText(el.labels[0]);
       if (t) return t;
     }
     if (el.getAttribute("aria-label")) return clean(el.getAttribute("aria-label"));

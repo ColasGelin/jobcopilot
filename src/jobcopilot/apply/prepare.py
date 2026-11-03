@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
-from jobcopilot.apply.ai_policy import find_ai_ban
+from jobcopilot.apply.ai_policy import find_ai_ban, find_ai_policy_field
 from jobcopilot.apply.draft import APPLY_PROMPT_VERSION, CV_WORDS, has_word, draft_answers, fallback_answers
 from jobcopilot.apply.models import FormField, FormSnapshot, NeedsYou, PreparedApp
 from jobcopilot.apply.voice import load_voice
@@ -81,7 +81,7 @@ class Preparer:
         except BankError as e:
             self.db.update_prepared(app_id, now, status="needs_you", reason=f"Experience bank problem: {e}")
             return self.db.get_prepared(app_id)
-        quote = find_ai_ban(form.page_text) or (self.db.get_prepared(app_id).ai_ban_quote)
+        quote = find_ai_ban(form.page_text) or find_ai_policy_field(form.fields) or self.db.get_prepared(app_id).ai_ban_quote
         model = self.settings.llm.draft_model
         try:
             cv_problem = self._ensure_cv(job, bank, fields)

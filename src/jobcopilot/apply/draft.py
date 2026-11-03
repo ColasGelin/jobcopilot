@@ -26,7 +26,7 @@ DESCRIPTION_LIMIT = 6000
 DEFAULT_WORDS = 150
 EEO_WORDS = ("gender", "sex", "ethnic", "race", "racial", "disabilit", "veteran", "sexual orientation", "pronoun",
              "género", "sexo", "etnia", "discapacidad", "sexe", "origine", "handicap", "orientation sexuelle")
-CONSENT_WORDS = ("agree", "agreement", "consent", "terms", "arbitrat", "privacy policy", "acepto", "términos",
+CONSENT_WORDS = ("agree", "agreement", "consent", "terms", "arbitrat", "policy", "acknowledg", "acepto", "términos",
                  "consentimiento", "j'accepte", "conditions générales")
 CV_WORDS = ("cv", "resume", "résumé", "curriculum")
 CHOICE_KINDS = ("select", "radio", "checkbox")

@@ -168,3 +168,12 @@ def test_prepare_pending_stops_when_claude_unavailable(env):
     _, db, settings, *_, jobs = env
     p, _, reads = preparer(env, [LLMUnavailable("logged out")])
     assert p.prepare_pending(NOW) == 0 and reads == [jobs[0].id]
+
+
+def test_ai_policy_field_sets_quote(env):
+    _, db, *_, jobs = env
+    policy = FormField(key="p", selector="#p", label="AI Policy for Application", kind="select", options=["Yes", "No"])
+    form = FORM.model_copy(update={"fields": FIELDS + [policy]})
+    p, llm, _ = preparer(env, [TAILORED, DRAFT], read=lambda job: form)
+    app = p.prepare_job(jobs[0].id, NOW)
+    assert app.ai_ban_quote.startswith("AI Policy for Application") and "do not write" in llm.calls[1][0].lower()

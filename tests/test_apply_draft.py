@@ -162,3 +162,9 @@ def test_load_voice(tmp_path):
     (tmp_path / "notes.md").write_text("short sentences\n")
     v = load_voice(tmp_path, [("q", "a")])
     assert v.samples == ["first", "second"] and v.notes == "short sentences" and v.recent == [("q", "a")]
+
+
+def test_policy_acknowledgement_left(bank):
+    fields = [f("p", "AI Policy for Application", "select", options=["Yes", "No"])]
+    answers, _ = run(bank, fields, [{"answers": [{"key": "p", "kind": "open", "option": "Yes"}]}])
+    assert answers[0].kind == "leave"
