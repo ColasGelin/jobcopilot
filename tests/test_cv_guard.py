@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from jobcopilot.cv.bank import SkillGroup, load_bank
-from jobcopilot.cv.guard import BulletChoice, ExpChoice, TailorResponse, canonical_skills, check
+from jobcopilot.cv.guard import BulletChoice, ExpChoice, TailorResponse, canonical_skills, check, check_text
 
 EXAMPLE = Path(__file__).parent / "fixtures" / "cv.example.yaml"
 
@@ -190,3 +190,15 @@ def test_guard_rejects_duplicate_skills_and_blank_text(bank):
     resp.projects[0].text = "  "
     problems = " | ".join(check(resp, bank))
     assert "twice" in problems and "Backend" in problems and "empty" in problems
+
+
+def test_check_text_uses_whole_bank_and_extra(bank):
+    assert check_text("q", "I built an MCP server with FastAPI.", bank) == []
+    assert any("AWS" in p for p in check_text("q", "Deployed on AWS.", bank))
+    assert any("40" in p for p in check_text("q", "I expect 40,000 EUR.", bank))
+    assert check_text("q", "I expect 40,000 EUR.", bank, extra_source="40,000 EUR") == []
+
+
+def test_check_text_allows_dates_from_bank(bank):
+    year = next(n for n in bank.experience[0].dates.split() if n.isdigit())
+    assert check_text("q", f"I have worked there since {year}.", bank) == []

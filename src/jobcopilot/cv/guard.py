@@ -107,6 +107,12 @@ def _bank_text(bank: Bank) -> str:
     return "\n".join(parts)
 
 
+def check_text(label: str, text: str, bank: Bank, extra_source: str = "") -> list[str]:
+    """Free text (e.g. an application answer): its numbers and tech terms must be in the bank or `extra_source`."""
+    dates = " ".join([e.dates for e in bank.experience] + [e.dates for e in bank.education] + [c.date for c in bank.certifications])
+    return _facts(label, text, "\n".join([_bank_text(bank), dates, extra_source]), tech_terms(bank))
+
+
 def _check_experience(resp: TailorResponse, bank: Bank, terms: set[str]) -> list[str]:
     problems = []
     expected = [e.id for e in bank.experience]
