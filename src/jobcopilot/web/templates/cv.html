@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="day-nav">
+    <span></span>
+    <h1>Main CV</h1>
+    {% if not error %}<a href="/cv.pdf" target="_blank" rel="noopener">Download PDF ↗</a>{% else %}<span></span>{% endif %}
+  </div>
+  {% if error %}
+    <p class="empty">{{ error }}</p>
+    <p class="empty">The CV is built from <code>data/cv.yaml</code> (start from <code>cv.example.yaml</code>). Tailored CVs use the same file.</p>
+  {% else %}
+    <p class="muted-text">Built from <code>data/cv.yaml</code>: items marked <code>main: true</code>. Tailored versions are made from each job's card.</p>
+    <iframe class="cv-frame" src="/cv/preview" title="Main CV preview"></iframe>
+  {% endif %}
+{% endblock %}

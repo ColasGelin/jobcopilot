@@ -1,0 +1,17 @@
+{% set info = cv_info(job_id) %}
+<div class="cv-block" id="cv-{{ job_id }}">
+  <b>CV for this job:</b>
+  {% if info %}
+    {% set content, pages, created = info %}
+    <span class="muted-text">{{ content.language | upper }} · {{ created.strftime("%d %b %H:%M") }} UTC</span>
+    <a href="/jobs/{{ job_id }}/cv" target="_blank" rel="noopener">View ↗</a>
+    <a href="/jobs/{{ job_id }}/cv.pdf" target="_blank" rel="noopener">Download PDF</a>
+  {% endif %}
+  <button hx-post="/jobs/{{ job_id }}/cv" hx-target="#cv-{{ job_id }}" hx-swap="outerHTML"
+          hx-indicator="#cv-ind-{{ job_id }}" hx-disabled-elt="this"
+          {% if not bank_ok() %}disabled title="Add data/cv.yaml first (see the CV tab)"{% endif %}>{{ "Redo" if info else "Tailor CV" }}</button>
+  <span class="htmx-indicator muted-text" id="cv-ind-{{ job_id }}">Generating… (30–60 s)</span>
+  {% if info and info[1] > 1 %}<p class="warn">{{ info[1] }} pages — regenerate, or trim the bank's items.</p>{% endif %}
+  {% if not bank_ok() %}<p class="muted-text">No cv.yaml yet, so tailoring is off. See the CV tab.</p>{% endif %}
+  {% if errors %}<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</div>

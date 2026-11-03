@@ -94,7 +94,16 @@ def serve(
     from jobcopilot import web
 
     settings = load_settings(ctx.obj / "config.yaml")
-    uvicorn.run(web.create_app(settings.db_path, min_score=settings.min_score, companies=settings.companies_to_check), host=host, port=port)
+    app_ = web.create_app(
+        settings.db_path,
+        min_score=settings.min_score,
+        companies=settings.companies_to_check,
+        cv_path=settings.cv_path,
+        cvs_dir=settings.cvs_dir,
+        llm_factory=lambda: ClaudeCodeClient(timeout_s=settings.llm.timeout_s),
+        draft_model=settings.llm.draft_model,
+    )
+    uvicorn.run(app_, host=host, port=port)
 
 
 def _write_pdf(path: Path, content) -> int:

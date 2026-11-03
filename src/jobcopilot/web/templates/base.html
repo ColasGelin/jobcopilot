@@ -14,11 +14,19 @@
       <a href="/" {% if active == 'today' %}aria-current="page"{% endif %}>Today</a>
       <a href="/pipeline" {% if active == 'pipeline' %}aria-current="page"{% endif %}>Pipeline</a>
       <a href="/companies" {% if active == 'companies' %}aria-current="page"{% endif %}>Companies</a>
+      <a href="/cv" {% if active == 'cv' %}aria-current="page"{% endif %}>CV</a>
       <a href="/runs" {% if active == 'runs' %}aria-current="page"{% endif %}>Runs</a>
     </nav>
   </header>
   <main class="{% block main_class %}{% endblock %}">{% block content %}{% endblock %}</main>
   <script>
+    // Swap 409 ("already generating") fragments too; other errors keep htmx's default (no swap).
+    document.addEventListener("DOMContentLoaded", () => {
+      htmx.config.responseHandling = [
+        { code: "204", swap: false }, { code: "409", swap: true }, { code: "[23]..", swap: true },
+        { code: "[45]..", swap: false, error: true },
+      ];
+    });
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-copy]");
       if (!btn) return;
