@@ -27,6 +27,26 @@ def main(ctx: typer.Context, home: Path = typer.Option(Path.cwd(), help="Folder 
     ctx.obj = home.expanduser().resolve()
 
 
+def make_preparer(settings, profile, db, llm, client):
+    from jobcopilot.apply.prepare import Preparer
+    from jobcopilot.apply.reader import read_form
+    from jobcopilot.cv.bank import load_bank
+
+    return Preparer(
+        db=db, settings=settings, profile=profile, llm=llm,
+        read=lambda job: read_form(job.url, job.company, settings.watchlist, client),
+        bank_loader=lambda: load_bank(settings.cv_path),
+    )
+
+
+def _prepare_pending(settings, profile, db, llm, client) -> None:
+    try:
+        done = make_preparer(settings, profile, db, llm, client).prepare_pending(datetime.now().astimezone())
+        typer.echo(f"{done} applications prepared.")
+    except Exception as e:  # the run itself succeeded; preparing is extra
+        typer.echo(f"Preparing applications failed: {e!r}")
+
+
 def _run(home: Path) -> int:
     """One full run. Returns the process exit code."""
     profile_path = home / "profile.yaml"
@@ -40,6 +60,8 @@ def _run(home: Path) -> int:
         sources = build_sources(settings.sources, client, settings)
         llm = ClaudeCodeClient(timeout_s=settings.llm.timeout_s)
         result, report = run_pipeline(settings, profile, db, sources, llm, datetime.now().astimezone())
+        if not result.error and settings.prepare.enabled:
+            _prepare_pending(settings, profile, db, llm, client)
     if result.error:
         typer.echo(f"Run failed: {result.error}")
         return 1

@@ -68,7 +68,7 @@ class _Response(BaseModel):
     answers: list[_Item]
 
 
-def _has_word(label: str, words: tuple[str, ...]) -> bool:
+def has_word(label: str, words: tuple[str, ...]) -> bool:
     low = label.lower()
     return any(re.search(rf"(?<![a-zà-ÿ]){re.escape(w)}", low) for w in words)
 
@@ -116,10 +116,10 @@ def _answer(field: FormField, item: _Item | None, profile: ApplicationProfile, b
         return Answer(field_key=field.key, label=field.label, kind=kind, draft=draft, problems=list(problems),
                       profile_key=profile_key, step=field.step)
 
-    if _has_word(field.label, EEO_WORDS) or _has_word(field.label, CONSENT_WORDS):
+    if has_word(field.label, EEO_WORDS) or has_word(field.label, CONSENT_WORDS):
         return make("leave")
     if field.kind == "file":
-        return make("cv", "CV") if _has_word(field.label, CV_WORDS) else make("leave")
+        return make("cv", "CV") if has_word(field.label, CV_WORDS) else make("leave")
     if item is None or item.kind not in ("fact", "open"):
         return make("leave")
     choice = field.kind in CHOICE_KINDS
@@ -141,6 +141,29 @@ def _answer(field: FormField, item: _Item | None, profile: ApplicationProfile, b
     elif not field.max_length and len(text.split()) > word_limit(field):
         problems.append(f"{field.label}: {len(text.split())} words; maximum is {word_limit(field)}")
     return make("open", text, problems)
+
+
+_FACT_LABELS = (
+    ("first_name", ("first name", "nombre", "prénom")), ("last_name", ("last name", "surname", "apellido", "nom de famille")),
+    ("email", ("email", "e-mail", "correo")), ("phone", ("phone", "teléfono", "telephone", "téléphone", "mobile")),
+    ("linkedin", ("linkedin",)), ("github", ("github",)), ("portfolio", ("website", "portfolio", "personal site")),
+    ("city", ("city", "ciudad", "ville")),
+)
+
+
+def fallback_answers(fields: list[FormField], profile: ApplicationProfile, bank: Bank, error: str) -> list[Answer]:
+    """When Claude can't be reached: common facts by label, the CV, and empty open answers saying why."""
+    answers = []
+    for f in fields:
+        key = next((k for k, words in _FACT_LABELS if has_word(f.label, words)), None)
+        if key and f.kind not in CHOICE_KINDS and profile.values().get(key):
+            answers.append(_answer(f, _Item(key=f.key, kind="fact", profile_key=key), profile, bank, False))
+            continue
+        answer = _answer(f, None, profile, bank, False)
+        if answer.kind == "leave" and f.kind == "textarea" and not has_word(f.label, EEO_WORDS + CONSENT_WORDS):
+            answer = answer.model_copy(update={"kind": "open", "problems": [f"Claude unavailable: {error}"]})
+        answers.append(answer)
+    return answers
 
 
 def draft_answers(job: Job, form: FormSnapshot, fields: list[FormField], profile: ApplicationProfile, bank: Bank,

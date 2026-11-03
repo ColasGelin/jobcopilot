@@ -126,3 +126,38 @@ def test_cli_cv_job_tailors(monkeypatch, tmp_path):
     assert result.exit_code == 0, result.output
     assert (tmp_path / "cvs" / f"{job.id}-acme.pdf").exists()
     assert DB(tmp_path / "jobs.db").latest_tailored_cv(job.id) is not None
+
+
+def test_cli_run_prepares_applications_when_enabled(monkeypatch, tmp_path):
+    from jobcopilot.apply.prepare import Preparer
+
+    calls = []
+    monkeypatch.setattr(cli, "run_pipeline", fake_pipeline())
+    monkeypatch.setattr(Preparer, "prepare_pending", lambda self, now: calls.append(now) or 2)
+    result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "run"])
+    assert result.exit_code == 0, result.output
+    assert len(calls) == 1 and "2 applications prepared" in result.output
+
+
+def test_cli_run_skips_preparing_when_disabled_or_failed(monkeypatch, tmp_path):
+    from jobcopilot.apply.prepare import Preparer
+
+    calls = []
+    monkeypatch.setattr(Preparer, "prepare_pending", lambda self, now: calls.append(now) or 0)
+    home = home_with_profile(tmp_path)
+    (home / "config.yaml").write_text("prepare: {enabled: false}\n")
+    monkeypatch.setattr(cli, "run_pipeline", fake_pipeline())
+    RUNNER.invoke(cli.app, ["--home", str(home), "run"])
+    (home / "config.yaml").write_text("")
+    monkeypatch.setattr(cli, "run_pipeline", fake_pipeline(error="boom"))
+    RUNNER.invoke(cli.app, ["--home", str(home), "run"])
+    assert calls == []
+
+
+def test_cli_run_survives_preparing_crash(monkeypatch, tmp_path):
+    from jobcopilot.apply.prepare import Preparer
+
+    monkeypatch.setattr(cli, "run_pipeline", fake_pipeline())
+    monkeypatch.setattr(Preparer, "prepare_pending", lambda self, now: (_ for _ in ()).throw(RuntimeError("x")))
+    result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "run"])
+    assert result.exit_code == 0 and "Preparing applications failed" in result.output
