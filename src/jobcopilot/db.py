@@ -9,11 +9,15 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from jobcopilot.apply.models import AgentCommand, Answer, FormSnapshot, PreparedApp
 from jobcopilot.cv.content import CvContent
 from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Match, Run
 from jobcopilot.text import normalize
 
 FOLLOW_UP_AFTER = timedelta(days=5)
+STALE_COMMAND_AFTER = timedelta(minutes=10)  # a "taken" command the agent never finished (crash) is offered again
+NOT_TO_PREPARE = ("skipped", "rejected", "applied", "interview", "offer")
+_KEEP = object()
 PIPELINE_STATUSES = ("shortlisted", "applied", "interview", "offer", "rejected")
 
 SCHEMA = """
@@ -40,6 +44,19 @@ CREATE TABLE IF NOT EXISTS company_checks (name TEXT PRIMARY KEY, checked_at TEX
 CREATE TABLE IF NOT EXISTS tailored_cvs (
     id INTEGER PRIMARY KEY, job_id TEXT REFERENCES jobs(id), language TEXT, content TEXT, pages INTEGER,
     model TEXT, prompt_version TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS prepared_apps (
+    id INTEGER PRIMARY KEY, job_id TEXT UNIQUE NOT NULL REFERENCES jobs(id), status TEXT NOT NULL, reason TEXT,
+    form TEXT, ai_ban_quote TEXT, created_at TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS prepared_answers (
+    id INTEGER PRIMARY KEY, app_id INTEGER NOT NULL REFERENCES prepared_apps(id), field_key TEXT, label TEXT,
+    kind TEXT, profile_key TEXT, draft TEXT, final TEXT, problems TEXT, step INTEGER, model TEXT,
+    prompt_version TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS agent_commands (
+    id INTEGER PRIMARY KEY, app_id INTEGER NOT NULL REFERENCES prepared_apps(id), action TEXT NOT NULL,
+    status TEXT NOT NULL, result TEXT, created_at TEXT, updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
@@ -104,7 +121,11 @@ class DB:
 
     def delete_jobs(self, job_ids: list[str]) -> None:
         with self.conn:
-            for table, col in (("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
+            for table in ("prepared_answers", "agent_commands"):
+                self.conn.executemany(
+                    f"DELETE FROM {table} WHERE app_id IN (SELECT id FROM prepared_apps WHERE job_id = ?)", [(i,) for i in job_ids]
+                )
+            for table, col in (("prepared_apps", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
                 self.conn.executemany(f"DELETE FROM {table} WHERE {col} = ?", [(i,) for i in job_ids])
 
     def get_job(self, job_id: str) -> Job | None:
@@ -168,6 +189,143 @@ class DB:
         data = dict(row)
         data["cv_tweaks"] = json.loads(data["cv_tweaks"])
         return Draft(**data)
+
+    # --- prepared applications ------------------------------------------------
+    def create_prepared(self, job_id: str, status: str, now: datetime, reason: str | None = None) -> int:
+        with self.conn:
+            cur = self.conn.execute(
+                "INSERT INTO prepared_apps (job_id, status, reason, created_at, updated_at) VALUES (?,?,?,?,?)",
+                (job_id, status, reason, _iso(now), _iso(now)),
+            )
+        return cur.lastrowid
+
+    def _prepared(self, where: str, value) -> PreparedApp | None:
+        row = self.conn.execute(
+            f"SELECT id, job_id, status, reason, form, ai_ban_quote, updated_at FROM prepared_apps WHERE {where} = ?", (value,)
+        ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        data["form"] = FormSnapshot.model_validate_json(data["form"]) if data["form"] else None
+        data["updated_at"] = _dt(data["updated_at"])
+        return PreparedApp(**data)
+
+    def get_prepared(self, app_id: int) -> PreparedApp | None:
+        return self._prepared("id", app_id)
+
+    def prepared_for_job(self, job_id: str) -> PreparedApp | None:
+        return self._prepared("job_id", job_id)
+
+    def update_prepared(self, app_id: int, now: datetime, *, status: str | None = None, reason=_KEEP,
+                        form: FormSnapshot | None = None, ai_ban_quote=_KEEP) -> None:
+        """Change only the given fields (reason and ai_ban_quote may be set to None explicitly)."""
+        changes: dict[str, object] = {"updated_at": _iso(now)}
+        if status is not None:
+            changes["status"] = status
+        if reason is not _KEEP:
+            changes["reason"] = reason
+        if form is not None:
+            changes["form"] = form.model_dump_json()
+        if ai_ban_quote is not _KEEP:
+            changes["ai_ban_quote"] = ai_ban_quote
+        with self.conn:
+            self.conn.execute(
+                f"UPDATE prepared_apps SET {', '.join(f'{k} = ?' for k in changes)} WHERE id = ?", (*changes.values(), app_id)
+            )
+
+    def save_answers(self, app_id: int, answers: list[Answer], model: str, prompt_version: str, now: datetime) -> None:
+        with self.conn:
+            self.conn.executemany(
+                "INSERT INTO prepared_answers (app_id, field_key, label, kind, profile_key, draft, final, problems, step,"
+                " model, prompt_version, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(app_id, a.field_key, a.label, a.kind, a.profile_key, a.draft, a.draft, json.dumps(a.problems), a.step,
+                  model, prompt_version, _iso(now)) for a in answers],
+            )
+
+    def answers(self, app_id: int) -> list[Answer]:
+        rows = self.conn.execute(
+            "SELECT id, field_key, label, kind, profile_key, draft, final, problems, step FROM prepared_answers"
+            " WHERE app_id = ? ORDER BY id",
+            (app_id,),
+        ).fetchall()
+        return [Answer(**(dict(r) | {"problems": json.loads(r["problems"] or "[]")})) for r in rows]
+
+    def set_final(self, answer_id: int, text: str, now: datetime) -> bool:
+        with self.conn:
+            cur = self.conn.execute(
+                "UPDATE prepared_answers SET final = ?, updated_at = ? WHERE id = ?", (text, _iso(now), answer_id)
+            )
+        return cur.rowcount > 0
+
+    def answer_app_id(self, answer_id: int) -> int | None:
+        row = self.conn.execute("SELECT app_id FROM prepared_answers WHERE id = ?", (answer_id,)).fetchone()
+        return row[0] if row else None
+
+    def voice_examples(self, limit: int = 5) -> list[tuple[str, str]]:
+        """(label, final) of the candidate's latest open answers on applications they went on to fill."""
+        rows = self.conn.execute(
+            "SELECT a.label, a.final FROM prepared_answers a JOIN prepared_apps p ON p.id = a.app_id"
+            " WHERE a.kind = 'open' AND trim(coalesce(a.final, '')) != '' AND p.status IN ('filled', 'applied')"
+            " ORDER BY a.updated_at DESC, a.id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [(r[0], r[1]) for r in rows]
+
+    def jobs_to_prepare(self, min_score: int, limit: int) -> list[str]:
+        rows = self.conn.execute(
+            "SELECT e.job_id FROM evaluations e"
+            " WHERE e.id = (SELECT max(id) FROM evaluations WHERE job_id = e.job_id) AND e.score >= ?"
+            " AND NOT EXISTS (SELECT 1 FROM prepared_apps p WHERE p.job_id = e.job_id)"
+            f" AND coalesce((SELECT status FROM applications a WHERE a.job_id = e.job_id), 'new') NOT IN ({','.join('?' * len(NOT_TO_PREPARE))})"
+            " ORDER BY e.score DESC, e.id DESC LIMIT ?",
+            (min_score, *NOT_TO_PREPARE, limit),
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    # --- agent commands -------------------------------------------------------
+    def queue_command(self, app_id: int, action: str, now: datetime) -> int:
+        with self.conn:
+            cur = self.conn.execute(
+                "INSERT INTO agent_commands (app_id, action, status, created_at, updated_at) VALUES (?,?,'queued',?,?)",
+                (app_id, action, _iso(now), _iso(now)),
+            )
+        return cur.lastrowid
+
+    def _command(self, row) -> AgentCommand | None:
+        if row is None:
+            return None
+        data = dict(row)
+        data["result"] = json.loads(data["result"]) if data["result"] else None
+        data["updated_at"] = _dt(data["updated_at"])
+        return AgentCommand(**data)
+
+    def get_command(self, cmd_id: int) -> AgentCommand | None:
+        return self._command(self.conn.execute(
+            "SELECT id, app_id, action, status, result, updated_at FROM agent_commands WHERE id = ?", (cmd_id,)).fetchone())
+
+    def latest_command(self, app_id: int) -> AgentCommand | None:
+        return self._command(self.conn.execute(
+            "SELECT id, app_id, action, status, result, updated_at FROM agent_commands WHERE app_id = ? ORDER BY id DESC LIMIT 1",
+            (app_id,)).fetchone())
+
+    def take_next_command(self, now: datetime) -> AgentCommand | None:
+        with self.conn:
+            row = self.conn.execute(
+                "SELECT id FROM agent_commands WHERE status = 'queued' OR (status = 'taken' AND updated_at < ?)"
+                " ORDER BY id LIMIT 1",
+                (_iso(now - STALE_COMMAND_AFTER),),
+            ).fetchone()
+            if row is None:
+                return None
+            self.conn.execute("UPDATE agent_commands SET status = 'taken', updated_at = ? WHERE id = ?", (_iso(now), row[0]))
+        return self.get_command(row[0])
+
+    def set_command(self, cmd_id: int, status: str, now: datetime, result: dict | None = None) -> None:
+        with self.conn:
+            self.conn.execute(
+                "UPDATE agent_commands SET status = ?, result = coalesce(?, result), updated_at = ? WHERE id = ?",
+                (status, json.dumps(result) if result is not None else None, _iso(now), cmd_id),
+            )
 
     # --- applications -------------------------------------------------------
     def status(self, job_id: str) -> str | None:
