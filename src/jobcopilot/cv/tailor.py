@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 
 import yaml
 from pydantic import ValidationError
@@ -145,3 +146,10 @@ def tailor_cv(job: Job, evaluation: Evaluation | None, bank: Bank, llm: LLMClien
 def cv_filename(job: Job) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", normalize(job.company)).strip("-")[:40].strip("-") or "company"
     return f"{job.id}-{slug}.pdf"
+
+
+def download_name(name: str) -> str:
+    """What the recruiter sees: "First-Last-CV.pdf", never a job id or company."""
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    parts = re.findall(r"[A-Za-z0-9]+", ascii_name)
+    return "-".join(parts + ["CV"]) + ".pdf"

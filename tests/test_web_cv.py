@@ -195,3 +195,11 @@ def test_cv_assets_serves_fonts_and_rejects_traversal(home):
     assert c.get("/cv-assets/inter-400.woff").status_code == 200
     assert c.get("/cv-assets/..%2Frender.py").status_code == 404
     assert c.get("/cv-assets/OFL-Inter.txt").status_code == 404
+
+
+def test_pdf_downloads_named_after_candidate(home):
+    tmp, job = home
+    c, _, _ = client(tmp, [GOOD])
+    assert c.get("/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV.pdf"'
+    c.post(f"/jobs/{job.id}/cv")
+    assert c.get(f"/jobs/{job.id}/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV.pdf"'

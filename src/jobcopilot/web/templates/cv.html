@@ -3,7 +3,7 @@
   <div class="day-nav">
     <span></span>
     <h1>Main CV</h1>
-    {% if not error %}<a href="/cv.pdf" target="_blank" rel="noopener">Download PDF ↗</a>{% else %}<span></span>{% endif %}
+    {% if not error %}<a href="/cv.pdf">Download PDF</a>{% else %}<span></span>{% endif %}
   </div>
   {% if error %}
     <p class="empty">{{ error }}</p>

@@ -15,9 +15,9 @@ from fastapi.templating import Jinja2Templates
 
 from jobcopilot.config import CompanyToCheck
 from jobcopilot.cv.bank import BankError, load_bank
-from jobcopilot.cv.content import main_content
+from jobcopilot.cv.content import CvContent, main_content
 from jobcopilot.cv.render import FONTS_DIR, render_html, render_pdf
-from jobcopilot.cv.tailor import TAILOR_PROMPT_VERSION, TailorError, cv_filename, tailor_cv
+from jobcopilot.cv.tailor import TAILOR_PROMPT_VERSION, TailorError, cv_filename, download_name, tailor_cv
 from jobcopilot.db import DB
 from jobcopilot.llm import LLMClient, LLMError
 from jobcopilot.models import STATUSES, Run
@@ -197,8 +197,9 @@ def create_app(
         return templates.TemplateResponse(request, "_company.html", {"r": company_row(by_name[name], store.company_checks())})
 
     # --- CV ---------------------------------------------------------------------
-    def pdf_response(pdf: bytes, filename: str) -> Response:
-        return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
+    def pdf_response(pdf: bytes, content: CvContent) -> Response:
+        filename = download_name(content.contact.name)
+        return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     @app.get("/cv", response_class=HTMLResponse)
     def cv_page(request: Request):
@@ -217,7 +218,8 @@ def create_app(
         bank, error = bank_or_error()
         if bank is None:
             raise HTTPException(404, error)
-        return pdf_response(render_pdf(main_content(bank)).pdf, "cv-main.pdf")
+        content = main_content(bank)
+        return pdf_response(render_pdf(content).pdf, content)
 
     @app.get("/cv-assets/{name}")
     def cv_asset(name: str):
@@ -283,6 +285,6 @@ def create_app(
         job, content = tailored_or_404(job_id)
         path = cvs_dir / cv_filename(job) if cvs_dir is not None else None
         pdf = path.read_bytes() if path is not None and path.exists() else render_pdf(content).pdf
-        return pdf_response(pdf, cv_filename(job))
+        return pdf_response(pdf, content)
 
     return app

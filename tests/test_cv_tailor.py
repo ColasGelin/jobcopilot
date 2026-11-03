@@ -97,3 +97,11 @@ def test_cv_filename_slug():
     job = make_job(1, company="Ünïcorn  AI / Labs, S.L.")
     assert cv_filename(job) == f"{job.id}-unicorn-ai-labs-s-l.pdf"
     assert cv_filename(make_job(2, company="")) == f"{make_job(2).id}-company.pdf"
+
+
+def test_download_name_uses_candidate_name():
+    from jobcopilot.cv.tailor import download_name
+
+    assert download_name("Alex Martin") == "Alex-Martin-CV.pdf"
+    assert download_name("Zoë  O'Brien-Núñez") == "Zoe-O-Brien-Nunez-CV.pdf"
+    assert download_name("  ") == "CV.pdf"
