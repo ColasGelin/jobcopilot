@@ -39,6 +39,19 @@ def make_preparer(settings, profile, db, llm, client):
     )
 
 
+def _preparer_factory(home: Path, settings):
+    """For the dashboard's "Prepare now": a Preparer per request (SQLite connections stay in their thread)."""
+    profile_path = home / "profile.yaml"
+    if not profile_path.exists():
+        return None
+
+    def factory():
+        return make_preparer(settings, load_profile(profile_path), DB(settings.db_path),
+                             ClaudeCodeClient(timeout_s=settings.llm.timeout_s), http_client())
+
+    return factory
+
+
 def _prepare_pending(settings, profile, db, llm, client) -> None:
     try:
         done = make_preparer(settings, profile, db, llm, client).prepare_pending(datetime.now().astimezone())
@@ -124,6 +137,7 @@ def serve(
         cvs_dir=settings.cvs_dir,
         llm_factory=lambda: ClaudeCodeClient(timeout_s=settings.llm.timeout_s),
         draft_model=settings.llm.draft_model,
+        preparer_factory=_preparer_factory(ctx.obj, settings),
     )
     uvicorn.run(app_, host=host, port=port)
 

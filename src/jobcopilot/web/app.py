@@ -59,6 +59,7 @@ def create_app(
     cvs_dir: Path | None = None,
     llm_factory: Callable[[], LLMClient] | None = None,
     draft_model: str = "sonnet",
+    preparer_factory: Callable[[], object] | None = None,  # builds a Preparer per request (own DB connection)
 ) -> FastAPI:
     app = FastAPI(title="jobcopilot", docs_url=None, redoc_url=None, openapi_url=None)
     # No auth by design, so: refuse foreign Host headers (DNS rebinding) ...
@@ -73,6 +74,7 @@ def create_app(
         return DB(db_path)  # one connection per request; the daemon writes to the same file
 
     app.state.tailor_lock = threading.Lock()  # one tailoring at a time (double clicks, two tabs)
+    app.state.prepare_lock = threading.Lock()
     bank_cache: dict[str, object] = {}
 
     def bank_or_error():
@@ -93,6 +95,8 @@ def create_app(
 
     templates.env.globals["bank_error"] = lambda: bank_or_error()[1]
     templates.env.globals["cv_info"] = lambda job_id: db().latest_tailored_cv(job_id)
+    templates.env.globals["prep_info"] = lambda job_id: db().prepared_for_job(job_id)
+    templates.env.globals["command_info"] = lambda app_id: db().latest_command(app_id)
 
     @app.get("/", response_class=HTMLResponse)
     def today(request: Request, day: str | None = None, all: bool = False):
@@ -286,5 +290,90 @@ def create_app(
         path = cvs_dir / cv_filename(job) if cvs_dir is not None else None
         pdf = path.read_bytes() if path is not None and path.exists() else render_pdf(content).pdf
         return pdf_response(pdf, content)
+
+    # --- prepared applications --------------------------------------------------
+    def prep_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
+        return templates.TemplateResponse(
+            request, "_prep.html", {"job_id": job_id, "errors": errors or [], "page": False}, status_code=status_code
+        )
+
+    def prepared_or_404(app_id: int):
+        prepared = db().get_prepared(app_id)
+        if prepared is None:
+            raise HTTPException(404, "unknown application")
+        return prepared
+
+    @app.post("/jobs/{job_id}/prepare", response_class=HTMLResponse)
+    def prepare_now(request: Request, job_id: str):
+        require_htmx(request)
+        if db().get_job(job_id) is None:
+            raise HTTPException(404, "unknown job")
+        if preparer_factory is None:
+            return prep_fragment(request, job_id, ["Preparing is not configured."])
+        if not app.state.prepare_lock.acquire(blocking=False):
+            return prep_fragment(request, job_id, ["Already preparing an application; wait for it to finish."], 409)
+        try:
+            preparer_factory().prepare_job(job_id, clock())
+        except Exception as e:  # show it on the card; the application row keeps its last state
+            return prep_fragment(request, job_id, [f"Preparing failed: {e}"])
+        finally:
+            app.state.prepare_lock.release()
+        return prep_fragment(request, job_id)
+
+    @app.get("/jobs/{job_id}/application", response_class=HTMLResponse)
+    def application_page(request: Request, job_id: str):
+        store = db()
+        job, prepared = store.get_job(job_id), store.prepared_for_job(job_id)
+        if job is None or prepared is None:
+            raise HTTPException(404, "no application for this job")
+        return templates.TemplateResponse(
+            request, "application.html",
+            {"job": job, "app": prepared, "answers": store.answers(prepared.id), "active": "today"},
+        )
+
+    @app.post("/answers/{answer_id}")
+    def autosave(request: Request, answer_id: int, final: str = Form("")):
+        require_htmx(request)
+        if not db().set_final(answer_id, final, clock()):
+            raise HTTPException(404, "unknown answer")
+        return Response(status_code=204)
+
+    @app.post("/applications/{app_id}/fill", response_class=HTMLResponse)
+    async def fill(request: Request, app_id: int):
+        require_htmx(request)
+        prepared = prepared_or_404(app_id)
+        store, now = db(), clock()
+        own = {a.id for a in store.answers(app_id)}
+        for name, value in (await request.form()).items():  # edits typed in the last second, not yet autosaved
+            if name.startswith("final-") and name[6:].isdigit() and int(name[6:]) in own:
+                store.set_final(int(name[6:]), str(value), now)
+        store.queue_command(app_id, "fill", now)
+        return prep_fragment(request, prepared.job_id)
+
+    @app.post("/applications/{app_id}/open", response_class=HTMLResponse)
+    def open_on_mac(request: Request, app_id: int):
+        require_htmx(request)
+        prepared = prepared_or_404(app_id)
+        db().queue_command(app_id, "read", clock())
+        return prep_fragment(request, prepared.job_id)
+
+    @app.post("/applications/{app_id}/continue", response_class=HTMLResponse)
+    def continue_on_mac(request: Request, app_id: int):
+        require_htmx(request)
+        prepared = prepared_or_404(app_id)
+        store = db()
+        cmd = store.latest_command(app_id)
+        if cmd is not None and cmd.status == "waiting":
+            store.set_command(cmd.id, "queued", clock())
+        return prep_fragment(request, prepared.job_id)
+
+    @app.post("/applications/{app_id}/applied", response_class=HTMLResponse)
+    def mark_applied(request: Request, app_id: int):
+        require_htmx(request)
+        prepared = prepared_or_404(app_id)
+        store, now = db(), clock()
+        store.set_status(prepared.job_id, "applied", now)
+        store.update_prepared(app_id, now, status="applied")
+        return prep_fragment(request, prepared.job_id)
 
     return app

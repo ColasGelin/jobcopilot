@@ -21,7 +21,7 @@
               {% if m.status == s %}disabled{% endif %}>{{ label }}</button>
     {% endfor %}
   </div>
-  {% if not compact %}{% with job_id = m.job_id, errors = [] %}{% include "_cv.html" %}{% endwith %}{% endif %}
+  {% if not compact %}{% with job_id = m.job_id, errors = [] %}{% include "_cv.html" %}{% include "_prep.html" %}{% endwith %}{% endif %}
   {% if compact %}
   {% elif m.draft %}
     <details>

@@ -161,3 +161,16 @@ def test_cli_run_survives_preparing_crash(monkeypatch, tmp_path):
     monkeypatch.setattr(Preparer, "prepare_pending", lambda self, now: (_ for _ in ()).throw(RuntimeError("x")))
     result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "run"])
     assert result.exit_code == 0 and "Preparing applications failed" in result.output
+
+
+def test_cli_serve_passes_preparer_factory_only_with_profile(monkeypatch, tmp_path):
+    captured = {}
+    monkeypatch.setattr(cli.uvicorn, "run", lambda app, host, port: None)
+    import jobcopilot.web as web
+    real = web.create_app
+    monkeypatch.setattr(web, "create_app", lambda db_path, **kw: captured.update(kw) or real(db_path, **kw))
+    RUNNER.invoke(cli.app, ["--home", str(tmp_path), "serve"])
+    assert captured["preparer_factory"] is None
+    RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "serve"])
+    preparer = captured["preparer_factory"]()
+    assert preparer.profile.summary == "me" and preparer.settings.data_dir == tmp_path

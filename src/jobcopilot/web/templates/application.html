@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>{{ job.company }} — {{ job.title }}</h1>
+  <p class="meta">{% if safe_url(job.url) %}<a href="{{ safe_url(job.url) }}" target="_blank" rel="noopener noreferrer">Job page ↗</a>{% endif %}
+    · Nothing is ever submitted for you: Fill form opens the form on your Mac and stops.</p>
+  {% with job_id = job.id, errors = [], page = True %}{% include "_prep.html" %}{% endwith %}
+  {% if app.ai_ban_quote %}
+    <div class="ai-ban"><b>This posting asks candidates not to use AI.</b> Open answers were left for you to write.
+      <blockquote>{{ app.ai_ban_quote }}</blockquote></div>
+  {% endif %}
+  {% if answers %}
+  <form id="answers-{{ app.id }}" class="answers" onsubmit="return false">
+    {% for step, group in answers | groupby("step") %}
+      {% if loop.length > 1 %}<h2>Step {{ step + 1 }}</h2>{% endif %}
+      {% for a in group %}
+        <div class="answer kind-{{ a.kind }}">
+          <label for="final-{{ a.id }}">{{ a.label or a.field_key }} <span class="badge">{{ {"fact": "Profile", "open": "Your answer", "cv": "CV", "leave": "Left for you"}[a.kind] }}</span></label>
+          {% set autosave = 'hx-post="/answers/' ~ a.id ~ '" hx-trigger="change, keyup changed delay:1s" hx-swap="none"' %}
+          {% if a.kind == "open" %}
+            <textarea id="final-{{ a.id }}" name="final-{{ a.id }}" rows="6" {{ autosave | safe }}>{{ a.final }}</textarea>
+            <span class="muted-text">{{ a.final.split() | length }} words</span>
+          {% elif a.kind == "fact" %}
+            <input id="final-{{ a.id }}" name="final-{{ a.id }}" value="{{ a.final }}" {{ autosave | safe }}>
+          {% elif a.kind == "cv" %}
+            <p>Tailored CV{% if cv_info(job.id) %} — <a href="/jobs/{{ job.id }}/cv" target="_blank" rel="noopener">View ↗</a>{% else %} (not created yet){% endif %}</p>
+          {% else %}
+            <p class="muted-text">Left for you: fill it in the form yourself.</p>
+          {% endif %}
+          {% if a.problems %}<ul class="errors">{% for p in a.problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+      {% endfor %}
+    {% endfor %}
+  </form>
+  {% endif %}
+{% endblock %}

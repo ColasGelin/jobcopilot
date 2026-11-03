@@ -1,0 +1,44 @@
+{% set app = prep_info(job_id) %}{% set cmd = command_info(app.id) if app else None %}
+<div class="prep-block" id="prep-{{ job_id }}">
+  <b>Application:</b>
+  {% if not app %}
+    <button hx-post="/jobs/{{ job_id }}/prepare" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML"
+            hx-indicator="#prep-ind-{{ job_id }}" hx-disabled-elt="this">Prepare now</button>
+    <span class="htmx-indicator muted-text" id="prep-ind-{{ job_id }}">Reading the form and drafting… (1–2 min)</span>
+  {% else %}
+    {% if app.status == "ready" %}<span class="badge ready">Application ready</span>
+    {% elif app.status == "needs_you" %}<span class="badge needs">Needs you: {{ app.reason }}</span>
+    {% elif app.status == "filled" %}<span class="badge filled">Filled</span>
+    {% elif app.status == "applied" %}<span class="badge applied">Applied</span>
+    {% else %}<span class="badge">Preparing…</span>{% endif %}
+    {% if not page %}<a href="/jobs/{{ job_id }}/application">Open ↗</a>{% endif %}
+    {% set target = 'hx-target="#prep-' ~ job_id ~ '" hx-swap="outerHTML"' %}
+    {% if app.status in ("ready", "filled") %}
+      <button hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill form</button>
+    {% endif %}
+    {% if app.status == "needs_you" %}
+      <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }}>Open on my Mac</button>
+      <button hx-post="/jobs/{{ job_id }}/prepare" {{ target | safe }} hx-indicator="#prep-ind-{{ job_id }}" hx-disabled-elt="this">Try again</button>
+      <span class="htmx-indicator muted-text" id="prep-ind-{{ job_id }}">Reading… (1–2 min)</span>
+    {% endif %}
+    {% if cmd and cmd.status == "waiting" %}
+      <button hx-post="/applications/{{ app.id }}/continue" {{ target | safe }}>Continue</button>
+    {% endif %}
+    {% if app.status != "applied" %}
+      <button hx-post="/applications/{{ app.id }}/applied" {{ target | safe }}>Mark applied</button>
+    {% endif %}
+    {% if cmd %}
+      <p class="muted-text">
+        {% if cmd.status in ("queued", "taken") %}Waiting for your Mac… (the agent must be running and the tunnel open)
+        {% elif cmd.status == "waiting" %}Window open on your Mac: sign in, create the account or click Next there, then click Continue.{% if cmd.result and cmd.result.error %} ({{ cmd.result.error }}){% endif %}
+        {% elif cmd.status == "failed" %}The Mac agent failed: {{ cmd.result.error if cmd.result else "unknown error" }}
+        {% elif cmd.action == "fill" %}Filled {{ (cmd.result.filled | length) if cmd.result else 0 }} fields on your Mac. Check them, then submit yourself.
+        {% else %}Form read on your Mac.{% endif %}
+      </p>
+      {% if cmd.status == "done" and cmd.result and cmd.result.unfilled %}
+        <ul class="errors">{% for u in cmd.result.unfilled %}<li>Not filled: {{ u.label }} ({{ u.why }})</li>{% endfor %}</ul>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+  {% if errors %}<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</div>
