@@ -32,3 +32,21 @@ def test_example_config_has_companies_to_check():
     assert any(c.name == "Example Labs" for c in s.companies_to_check)
     assert all(c.url is None or c.url.startswith("https://") for c in s.companies_to_check)
     assert any(c.name == "Sample Studio" and c.url is None for c in s.companies_to_check)
+
+
+def test_profile_application_block_optional(tmp_path):
+    p = tmp_path / "profile.yaml"
+    p.write_text("hard_filters: {}\nsummary: s\n")
+    assert load_profile(p).application.values() == {}
+    p.write_text("hard_filters: {}\nsummary: s\napplication: {first_name: Alex, phone: ''}\n")
+    assert load_profile(p).application.values() == {"first_name": "Alex"}
+
+
+def test_prepare_settings_defaults(tmp_path):
+    s = load_settings(tmp_path / "config.yaml")
+    assert (s.prepare.enabled, s.prepare.min_score, s.prepare.max_per_run) == (True, 75, 10)
+    assert s.voice_dir == tmp_path / "voice"
+
+
+def test_example_profile_has_application_block():
+    assert load_profile(ROOT / "profile.example.yaml").application.values()["first_name"] == "Alex"

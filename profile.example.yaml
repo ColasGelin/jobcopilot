@@ -17,3 +17,20 @@ summary: |
   Junior AI engineer. Python, TypeScript, LLM systems (RAG, agents, MCP),
   FastAPI, vector databases, Docker, Kubernetes.
   Looking for remote (EU timezones) or Málaga roles, junior to mid level.
+
+# Facts copied into application forms exactly as written. Leave out what you don't want filled.
+application:
+  first_name: Alex
+  last_name: Martin
+  email: alex@example.com
+  phone: "+34 600 000 000"
+  city: Málaga
+  country: Spain
+  linkedin: https://www.linkedin.com/in/example
+  github: https://github.com/example
+  portfolio: https://example.com
+  salary_expectation: "45,000 EUR"
+  available_from: January 2027
+  notice_period: Two weeks
+  work_authorization: EU citizen, no sponsorship needed
+  willing_to_relocate: "No"

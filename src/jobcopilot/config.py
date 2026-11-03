@@ -17,9 +17,32 @@ class HardFilters(BaseModel):
     min_salary_eur: int | None = None
 
 
+class ApplicationProfile(BaseModel):
+    """Facts copied into application forms as written. Every key is optional."""
+
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    city: str | None = None
+    country: str | None = None
+    linkedin: str | None = None
+    github: str | None = None
+    portfolio: str | None = None
+    salary_expectation: str | None = None
+    available_from: str | None = None
+    notice_period: str | None = None
+    work_authorization: str | None = None
+    willing_to_relocate: str | None = None
+
+    def values(self) -> dict[str, str]:
+        return {k: v for k, v in self.model_dump().items() if v and str(v).strip()}
+
+
 class Profile(BaseModel):
     hard_filters: HardFilters
     summary: str
+    application: ApplicationProfile = Field(default_factory=ApplicationProfile)
 
 
 class LLMSettings(BaseModel):
@@ -47,6 +70,14 @@ class CompanyToCheck(BaseModel):
     category: str = "Other"
 
 
+class PrepareSettings(BaseModel):
+    """Applications prepared automatically after each run (form read, CV tailored, answers drafted)."""
+
+    enabled: bool = True
+    min_score: int = 75
+    max_per_run: int = 10
+
+
 class Settings(BaseModel):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     top_n: int = 10
@@ -61,6 +92,7 @@ class Settings(BaseModel):
     companies_to_check: list[CompanyToCheck] = Field(default_factory=list)
     # Caps LLM usage when a source (e.g. a new watchlist) brings many jobs at once; the rest wait for the next run.
     max_scored_per_run: int = 150
+    prepare: PrepareSettings = Field(default_factory=PrepareSettings)
     data_dir: Path
 
     @property
@@ -82,6 +114,10 @@ class Settings(BaseModel):
     @property
     def cvs_dir(self) -> Path:
         return self.data_dir / "cvs"
+
+    @property
+    def voice_dir(self) -> Path:
+        return self.data_dir / "voice"
 
 
 def _read_yaml(path: Path) -> dict:
