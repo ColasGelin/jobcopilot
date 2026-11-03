@@ -25,11 +25,16 @@
     }
     return "";
   };
-  // A label that wraps its control would also contain the control's text (a select's options): drop it.
+  // Only the label's own visible words: not the control inside it (a select's options), not hidden helper text.
   const labelText = (label) => {
-    const copy = label.cloneNode(true);
-    copy.querySelectorAll("select, textarea, input, button").forEach((c) => c.remove());
-    return clean(copy.innerText || copy.textContent);
+    const parts = [];
+    const walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest("select, textarea, button, option") || !visible(parent)) continue;
+      parts.push(node.textContent);
+    }
+    return clean(parts.join(" ")).slice(0, 150);
   };
   const labelOf = (el) => {
     if (el.labels && el.labels.length) {

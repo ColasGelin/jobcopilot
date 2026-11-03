@@ -79,4 +79,4 @@ def test_reads_current_page_without_navigating(page):
 
 def test_wrapping_labels_are_cleaned(page):
     snap = read_page(page, url("wrapped_labels.html"))
-    assert [f.label for f in snap.fields] == ["Full name", "Gender"]
+    assert [f.label for f in snap.fields] == ["Full name", "Gender", "Resume/CV"]
