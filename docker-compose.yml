@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: Europe/Madrid
-    env_file: .env          # the dashboard calls Claude when you click "Tailor CV"
+    env_file: .env          # the dashboard calls Claude when you click "Tailor CV"; it has no login, so keep the port local-only
     volumes:
       - ./data:/data
     command: ["serve", "--host", "0.0.0.0", "--port", "8077"]   # 0.0.0.0 inside the container only

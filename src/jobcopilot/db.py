@@ -7,6 +7,8 @@ import sqlite3
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from jobcopilot.cv.content import CvContent
 from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Match, Run
 from jobcopilot.text import normalize
@@ -132,8 +134,12 @@ class DB:
         ).fetchone()
         if row is None:
             return None
+        try:
+            content = CvContent.model_validate_json(row["content"])
+        except ValidationError:  # saved by an older version whose format no longer loads
+            return None
         created = datetime.fromisoformat(row["created_at"]).replace(tzinfo=timezone.utc)
-        return CvContent.model_validate_json(row["content"]), row["pages"], created
+        return content, row["pages"], created
 
     # --- evaluations and drafts --------------------------------------------
     def save_evaluation(self, e: Evaluation) -> None:

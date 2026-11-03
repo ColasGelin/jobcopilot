@@ -1,3 +1,4 @@
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,7 +61,40 @@ def test_cv_missing_bank(home):
     assert page.status_code == 200 and "cv.yaml" in page.text
     assert c.get("/cv.pdf").status_code == 404
     today = c.get("/")
-    assert today.status_code == 200 and "Tailor CV" in today.text and "disabled" in today.text
+    assert today.status_code == 200
+    assert re.search(r'hx-post="/jobs/[^"]+/cv"[^>]*\sdisabled', today.text)
+    assert "No cv.yaml yet" in today.text
+
+
+def test_invalid_bank_disables_button_with_error(home):
+    tmp, _ = home
+    (tmp / "cv.yaml").write_text("contact: [unclosed", encoding="utf-8")
+    c, _, _ = client(tmp)
+    today = c.get("/")
+    assert today.status_code == 200
+    assert re.search(r'hx-post="/jobs/[^"]+/cv"[^>]*\sdisabled', today.text)
+    assert "not valid YAML" in today.text
+    assert "not valid YAML" in c.get("/cv").text
+
+
+def test_render_failure_keeps_result_and_shows_error(home, monkeypatch):
+    from jobcopilot.web import app as web_app
+
+    tmp, job = home
+    c, _, _ = client(tmp, [GOOD])
+    monkeypatch.setattr(web_app, "render_pdf", lambda content: (_ for _ in ()).throw(OSError("no pango")))
+    r = c.post(f"/jobs/{job.id}/cv")
+    assert r.status_code == 200 and "no pango" in r.text
+    assert DB(tmp / "jobs.db").latest_tailored_cv(job.id) is not None
+
+
+def test_stale_tailored_row_does_not_break_today(home):
+    tmp, job = home
+    db = DB(tmp / "jobs.db")
+    db.conn.execute("INSERT INTO tailored_cvs (job_id, language, content, pages) VALUES (?, 'en', '{\"old\": 1}', 1)", (job.id,))
+    db.conn.commit()
+    c, _, _ = client(tmp)
+    assert c.get("/").status_code == 200
 
 
 def test_today_card_has_tailor_button(home):

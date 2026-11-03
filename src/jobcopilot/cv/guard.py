@@ -17,8 +17,15 @@ MAX_ENGINEERING = 3
 MAX_HACKATHONS = 2
 MAX_SKILL_GROUPS = 5
 
-_NUMBER = re.compile(r"\d+(?:[.,]\d+)*%?")
-_THOUSANDS = re.compile(r"^\d{1,3}(?:[.,]\d{3})+$")
+# Digits with optional separators: "2,000", "2.000", "2 000" (space / no-break space before 3 digits), "3.5", "85 %".
+_SPACES = " \u00a0\u202f"
+_NUMBER = re.compile(rf"\d+(?:(?:[.,]|[{_SPACES}](?=\d{{3}}(?!\d)))\d+)*(?:[{_SPACES}]?%)?")
+_THOUSANDS = re.compile(rf"^\d{{1,3}}(?:[.,{_SPACES}]\d{{3}})+$")
+# Technology names that are also ordinary words ("go live", "react fast"): the source must spell them
+# with the same case, or a lowercase word in the source would excuse an invented technology.
+_AMBIGUOUS = {"Go", "Rust", "Express", "React", "Spring", "Swift", "Spark", "Vue", "Llama", "Flask", "Celery",
+              "Helm", "Ruby", "Dart", "Julia", "Claude", "Gemini", "Whisper", "Transformers", "Jest", "Loki",
+              "Chroma", "Polars", "Rails", "Make", "Chef"}
 
 
 class BulletChoice(BaseModel):
@@ -55,27 +62,35 @@ def _numbers(text: str) -> set[str]:
     out = set()
     for raw in _NUMBER.findall(text):
         pct = raw.endswith("%")
-        n = raw.rstrip("%")
-        n = re.sub(r"[.,]", "", n) if _THOUSANDS.match(n) else n.replace(",", ".")
+        n = raw.rstrip("%").rstrip(_SPACES)
+        n = re.sub(rf"[.,{_SPACES}]", "", n) if _THOUSANDS.match(n) else n.replace(",", ".")
         out.add(n + ("%" if pct else ""))
     return out
 
 
 def _term_pattern(term: str, flags: int = 0) -> re.Pattern:
-    return re.compile(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9+#])", flags)
+    # A one-letter term (C) must not match French elision ("C'est").
+    after = "A-Za-z0-9+#'\u2019" if len(term) == 1 else "A-Za-z0-9+#"
+    return re.compile(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![{after}])", flags)
+
+
+def _in_source(term: str, source: str) -> bool:
+    exact = term in _AMBIGUOUS or len(term) <= 2
+    return bool(_term_pattern(term, 0 if exact else re.I).search(source))
 
 
 def _facts(label: str, text: str, source: str, terms: set[str]) -> list[str]:
     """Numbers and technology names in `text` must already be in `source`.
 
     Terms are detected in the output case-sensitively (so the verb "go" or "express" is not the
-    language Go or the framework Express) and looked up in the source case-insensitively.
+    language Go or the framework Express) and looked up in the source case-insensitively, except
+    ambiguous and very short terms, which need the same case there too.
     """
     problems = []
     new_numbers = _numbers(text) - _numbers(source)
     if new_numbers:
         problems.append(f"{label}: numbers {sorted(new_numbers)} are not in the source")
-    invented = sorted(t for t in terms if _term_pattern(t).search(text) and not _term_pattern(t, re.I).search(source))
+    invented = sorted(t for t in terms if _term_pattern(t).search(text) and not _in_source(t, source))
     if invented:
         problems.append(f"{label}: {', '.join(invented)} not in the source")
     return problems
@@ -106,6 +121,8 @@ def _check_experience(resp: TailorResponse, bank: Bank, terms: set[str]) -> list
         if len(exp.bullets) > MAX_BULLETS_PER_EXPERIENCE:
             problems.append(f"experience {exp.id!r} has {len(exp.bullets)} bullets; maximum is {MAX_BULLETS_PER_EXPERIENCE}")
         for b in exp.bullets:
+            if not b.text.strip():
+                problems.append(f"bullet {b.source_id!r} has empty text")
             if b.source_id in seen:
                 problems.append(f"bullet {b.source_id!r} is used twice")
                 continue
@@ -133,6 +150,8 @@ def _check_projects(resp: TailorResponse, bank: Bank, terms: set[str]) -> list[s
             problems.append(f"project {choice.source_id!r} is used twice")
             continue
         seen.add(choice.source_id)
+        if not choice.text.strip():
+            problems.append(f"project {p.id!r} has empty text")
         counts[p.section] += 1
         problems += _facts(f"project {p.id!r}", choice.text, f"{p.name} {p.text}", terms)
     if counts["engineering"] > MAX_ENGINEERING:
@@ -147,11 +166,17 @@ def _check_skills(resp: TailorResponse, bank: Bank) -> list[str]:
     groups = {g.group.lower(): g for g in bank.skills}
     if len(resp.skills) > MAX_SKILL_GROUPS:
         problems.append(f"{len(resp.skills)} skill groups; maximum is {MAX_SKILL_GROUPS}")
+    seen_groups: set[str] = set()
     for g in resp.skills:
         known = groups.get(g.group.lower())
         if known is None:
             problems.append(f"skill group {g.group!r} does not exist")
             continue
+        if known.group in seen_groups:
+            problems.append(f"skill group {known.group!r} is listed twice")
+        seen_groups.add(known.group)
+        if len({i.lower() for i in g.items}) != len(g.items):
+            problems.append(f"an item is listed twice in skill group {known.group!r}")
         allowed = {i.lower() for i in known.items}
         unknown = [i for i in g.items if i.lower() not in allowed]
         if unknown:

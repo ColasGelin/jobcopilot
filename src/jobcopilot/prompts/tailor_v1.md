@@ -17,7 +17,7 @@ Description:
 
 ## What to return (JSON matching the schema)
 - `language`: the posting's language: "en", "es" or "fr" (English if unsure). Write every text in it.
-- `headline`: exactly one of {headlines}. Pick the closest to the role.
+- `headline`: exactly one of {headlines}, copied verbatim (never translated). Pick the closest to the role.
 - `summary`: at most {max_summary_words} words, rewritten from the bank's summary for this role.
 - `experience`: every experience id, in this exact order: {experience_ids}. For each, 1 to
   {max_bullets} bullets, most relevant first. Each bullet has `source_id` (the id of a bullet of THAT

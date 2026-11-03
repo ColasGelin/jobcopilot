@@ -73,7 +73,25 @@ def create_app(
         return DB(db_path)  # one connection per request; the daemon writes to the same file
 
     app.state.tailor_lock = threading.Lock()  # one tailoring at a time (double clicks, two tabs)
-    templates.env.globals["bank_ok"] = lambda: cv_path is not None and cv_path.exists()
+    bank_cache: dict[str, object] = {}
+
+    def bank_or_error():
+        """(bank, None) or (None, message); re-read only when cv.yaml changes."""
+        if cv_path is None:
+            return None, "No cv.yaml configured."
+        try:
+            stamp = cv_path.stat().st_mtime_ns
+        except OSError:
+            stamp = None
+        if bank_cache.get("stamp") != stamp or "result" not in bank_cache:
+            try:
+                result = (load_bank(cv_path), None)
+            except BankError as e:
+                result = (None, str(e))
+            bank_cache.update(stamp=stamp, result=result)
+        return bank_cache["result"]
+
+    templates.env.globals["bank_error"] = lambda: bank_or_error()[1]
     templates.env.globals["cv_info"] = lambda job_id: db().latest_tailored_cv(job_id)
 
     @app.get("/", response_class=HTMLResponse)
@@ -179,14 +197,6 @@ def create_app(
         return templates.TemplateResponse(request, "_company.html", {"r": company_row(by_name[name], store.company_checks())})
 
     # --- CV ---------------------------------------------------------------------
-    def bank_or_error():
-        if cv_path is None:
-            return None, "No cv.yaml configured."
-        try:
-            return load_bank(cv_path), None
-        except BankError as e:
-            return None, str(e)
-
     def pdf_response(pdf: bytes, filename: str) -> Response:
         return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
 
@@ -243,7 +253,11 @@ def create_app(
                 return cv_fragment(request, job_id, ["Claude's answer broke these rules twice; try again:"] + e.violations)
             except LLMError as e:
                 return cv_fragment(request, job_id, [f"Claude is unavailable: {e}"])
-            result = render_pdf(content)
+            try:
+                result = render_pdf(content)
+            except Exception as e:  # keep Claude's work; the preview still works without a PDF
+                store.save_tailored_cv(job_id, content, 0, draft_model, TAILOR_PROMPT_VERSION)
+                return cv_fragment(request, job_id, [f"The CV was saved but the PDF could not be rendered: {e}"])
             if cvs_dir is not None:
                 cvs_dir.mkdir(parents=True, exist_ok=True)
                 (cvs_dir / cv_filename(job)).write_bytes(result.pdf)

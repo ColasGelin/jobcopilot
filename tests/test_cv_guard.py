@@ -161,3 +161,32 @@ def test_guard_common_words_not_mistaken_for_tech(bank):
     resp = valid()
     resp.experience[1].bullets[0].text = "Built FastAPI services to go live fast and express ideas for 3 internal teams."
     assert check(resp, bank) == []
+
+
+def test_guard_ambiguous_terms_need_exact_case_in_source(bank):
+    resp = valid()
+    bank.experience[1].bullets[0].text = "Built FastAPI services used by 3 internal teams to go live fast; removed rust."
+    resp.experience[1].bullets[0].text = "Built FastAPI services in Go and Rust for 3 internal teams."
+    problems = " | ".join(check(resp, bank))
+    assert "Go" in problems and "Rust" in problems
+
+
+def test_guard_french_number_typography(bank):
+    resp = valid(language="fr")
+    bank.experience[1].bullets[0].text = "Raised test coverage to 85% across 2,000 tests for 3 teams with FastAPI."
+    resp.experience[1].bullets[0].text = "Couverture de tests portée à 85 % sur 2 000 tests pour 3 équipes avec FastAPI."
+    assert check(resp, bank) == []
+    resp.experience[1].bullets[0].text = "Couverture portée à 85 % sur 2 000 tests pour 3 équipes avec FastAPI."
+    assert check(resp, bank) == []
+
+
+def test_guard_french_elision_not_c_language(bank):
+    resp = valid(language="fr", summary="C'est un ingénieur IA qui construit des pipelines RAG avec Python.")
+    assert check(resp, bank) == []
+
+
+def test_guard_rejects_duplicate_skills_and_blank_text(bank):
+    resp = valid(skills=[SkillGroup(group="Backend", items=["Python", "Python"]), SkillGroup(group="backend", items=["SQL"])])
+    resp.projects[0].text = "  "
+    problems = " | ".join(check(resp, bank))
+    assert "twice" in problems and "Backend" in problems and "empty" in problems
