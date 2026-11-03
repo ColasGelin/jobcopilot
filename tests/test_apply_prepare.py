@@ -177,3 +177,54 @@ def test_ai_policy_field_sets_quote(env):
     p, llm, _ = preparer(env, [TAILORED, DRAFT], read=lambda job: form)
     app = p.prepare_job(jobs[0].id, NOW)
     assert app.ai_ban_quote.startswith("AI Policy for Application") and "do not write" in llm.calls[1][0].lower()
+
+
+def test_unexpected_error_marks_needs_you(env):
+    _, db, *_, jobs = env
+    p, _, _ = preparer(env, [], read=lambda job: (_ for _ in ()).throw(KeyError("questions")))
+    app = p.prepare_job(jobs[0].id, NOW)
+    assert app.status == "needs_you" and "Preparing failed" in app.reason
+
+
+def test_stale_reading_and_claude_unavailable_are_retried(env):
+    from datetime import timedelta
+    _, db, settings, *_, jobs = env
+    stuck = db.create_prepared(jobs[0].id, "reading", NOW - timedelta(minutes=30))
+    db.create_prepared(jobs[1].id, "needs_you", NOW, reason="Claude unavailable: logged out")
+    assert db.jobs_to_prepare(75, 10, now=NOW) == [jobs[0].id, jobs[1].id]
+    p, _, reads = preparer(env, [TAILORED, DRAFT])
+    assert p.prepare_job(jobs[0].id, NOW).status == "ready" and reads == [jobs[0].id]
+    fresh = db.create_prepared(jobs[2].id, "drafting", NOW)
+    assert p.prepare_job(jobs[2].id, NOW).status == "drafting"  # still being prepared: left alone
+
+
+def test_reread_replaces_answers_instead_of_duplicating(env):
+    _, db, *_, jobs = env
+    results = [FORM, NeedsYou(reason="x")]
+    p, _, _ = preparer(env, [TAILORED, DRAFT, DRAFT], read=lambda job: FORM)
+    app = p.prepare_job(jobs[0].id, NOW)
+    db.update_prepared(app.id, NOW, status="needs_you", reason="Claude unavailable: x")
+    p.prepare_job(jobs[0].id, NOW)
+    assert len(db.answers(app.id)) == 3
+
+
+def test_same_step_ingested_twice_replaces_it(env):
+    _, db, *_, jobs = env
+    step = FormSnapshot(url="https://jobs/1/2", fields=[FormField(key="more", selector="#more", label="More", kind="textarea")])
+    resp = {"answers": [{"key": "more", "kind": "open", "answer": "I built a RAG assistant."}]}
+    p, llm, _ = preparer(env, [TAILORED, DRAFT, resp, resp])
+    app = p.prepare_job(jobs[0].id, NOW)
+    p.ingest(app.id, step, NOW)
+    after = p.ingest(app.id, step, NOW)  # Continue clicked twice on the same page
+    assert [f.step for f in after.form.fields] == [0, 0, 0, 1] and len(db.answers(app.id)) == 4
+
+
+def test_ingest_claude_down_keeps_ready_app(env):
+    _, db, *_, jobs = env
+    step = FormSnapshot(url="https://jobs/1/2", fields=[FormField(key="more", selector="#more", label="More", kind="textarea")])
+    p, _, _ = preparer(env, [TAILORED, DRAFT, LLMUnavailable("logged out")])
+    app = p.prepare_job(jobs[0].id, NOW)
+    with pytest.raises(LLMUnavailable):
+        p.ingest(app.id, step, NOW)
+    after = db.get_prepared(app.id)
+    assert after.status == "ready" and len(after.form.fields) == 3 and len(db.answers(app.id)) == 3

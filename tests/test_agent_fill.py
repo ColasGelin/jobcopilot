@@ -78,3 +78,27 @@ def test_missing_field_and_cv_reported_unfilled(page):
     whys = {u["key"]: u["why"] for u in r.unfilled}
     assert set(whys) == {"nope", "cv", "visa"} and "not found" in whys["nope"] and "CV" in whys["cv"]
     assert all(u["label"] for u in r.unfilled)
+
+
+def test_reveal_form_never_submits(browser):
+    from jobcopilot.agent.fill import reveal_form
+
+    pg = browser.new_page()
+    pg.goto((FORMS / "submit_apply.html").as_uri())
+    reveal_form(pg, [field("x", "#gone", "Gone", "text", "v")])
+    assert pg.evaluate("window.sub") is False
+    pg.close()
+
+
+def test_option_labels_normalised_and_iframe_found_by_search(browser):
+    pg = browser.new_page()
+    pg.goto((FORMS / "radio_star.html").as_uri())
+    pg.wait_for_load_state("load")
+    r = fill_fields(pg, [field("r", '[name="r"]', "Relocate?", "radio", "Yes"),
+                         # recorded without a frame (Greenhouse API) but the page embeds the form in an iframe
+                         field("q", "#q", "Why us?", "textarea", "Because.")], None)
+    assert r.filled == ["r", "q"], r.unfilled
+    assert pg.is_checked('[name="r"][value="y"]')
+    r = fill_fields(pg, [field("r", '[name="r"]', "Relocate?", "radio", "No")], None)
+    assert r.filled == ["r"]
+    pg.close()

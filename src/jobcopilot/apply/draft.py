@@ -25,14 +25,19 @@ APPLY_PROMPT_VERSION = "apply_v1"
 DESCRIPTION_LIMIT = 6000
 DEFAULT_WORDS = 150
 EEO_WORDS = ("gender", "sex", "ethnic", "race", "racial", "disabilit", "veteran", "sexual orientation", "pronoun",
-             "género", "sexo", "etnia", "discapacidad", "sexe", "origine", "handicap", "orientation sexuelle")
-CONSENT_WORDS = ("agree", "agreement", "consent", "terms", "arbitrat", "policy", "acknowledg", "acepto", "términos",
+             "hispan", "latin", "transgender", "lgbt", "género", "sexo", "etnia", "étnic", "raza", "discapacidad",
+             "sexe", "genre", "origine", "handicap", "orientation sexuelle")
+EEO_OPTIONS = ("decline to self", "decline to answer", "don't wish to answer", "do not wish to answer", "prefer not to",
+               "hispanic", "latino", "prefiero no", "je préfère ne pas", "male", "female", "non-binary")
+CONSENT_WORDS = ("agree", "agreement", "consent", "terms", "arbitrat", "policy", "acknowledg", "accept", "certif",
+                 "autoris", "privacy", "privacidad", "données", "datos personales", "confidentialité", "acepto", "términos",
                  "consentimiento", "j'accepte", "conditions générales")
 CV_WORDS = ("cv", "resume", "résumé", "curriculum")
 CHOICE_KINDS = ("select", "radio", "checkbox")
 AI_BAN_RULE = ("- This posting asks candidates not to use AI for their answers: do not write any `open` answer. "
                "Return `open` with an empty `answer` for those questions; still classify facts and choices.")
 _WORD_GUIDE = re.compile(r"(\d+)\s*(?:words|palabras|mots)", re.I)
+_WORD_RANGE = re.compile(r"(\d+)\s*(?:-|–|to|a|à)\s*(\d+)\s*(?:words|palabras|mots)", re.I)
 
 SCHEMA = {
     "type": "object",
@@ -74,12 +79,17 @@ def has_word(label: str, words: tuple[str, ...]) -> bool:
 
 
 def word_limit(field: FormField) -> int:
-    """150 words, or the largest word count the question's help text asks for ("200-400 words")."""
-    numbers = [int(n) for n in re.findall(r"\d+", " ".join(m.group(0) for m in _WORD_GUIDE.finditer(field.description)))]
-    guide = re.search(r"(\d+)\s*(?:-|–|to|a|à)\s*(\d+)\s*(?:words|palabras|mots)", field.description, re.I)
-    if guide:
-        numbers.append(int(guide.group(2)))
-    return max(numbers + [DEFAULT_WORDS])
+    """The word count the question's help text asks for ("under 100 words", top of "200-400 words"), else 150."""
+    numbers = [int(m.group(2)) for m in _WORD_RANGE.finditer(field.description)]
+    numbers += [int(m.group(1)) for m in _WORD_GUIDE.finditer(field.description)]
+    return max(numbers) if numbers else DEFAULT_WORDS
+
+
+def is_candidates_own(field: FormField) -> bool:
+    """Diversity and consent questions: never answered by Claude or the agent, whatever Claude says."""
+    options = " | ".join(field.options).lower()
+    return (field.eeo or has_word(field.label, EEO_WORDS) or has_word(field.label, CONSENT_WORDS)
+            or any(word in options for word in EEO_OPTIONS))
 
 
 def _limit_text(field: FormField) -> str:
@@ -116,7 +126,7 @@ def _answer(field: FormField, item: _Item | None, profile: ApplicationProfile, b
         return Answer(field_key=field.key, label=field.label, kind=kind, draft=draft, problems=list(problems),
                       profile_key=profile_key, step=field.step)
 
-    if has_word(field.label, EEO_WORDS) or has_word(field.label, CONSENT_WORDS):
+    if is_candidates_own(field):
         return make("leave")
     if field.kind == "file":
         return make("cv", "CV") if has_word(field.label, CV_WORDS) else make("leave")
@@ -160,7 +170,7 @@ def fallback_answers(fields: list[FormField], profile: ApplicationProfile, bank:
             answers.append(_answer(f, _Item(key=f.key, kind="fact", profile_key=key), profile, bank, False))
             continue
         answer = _answer(f, None, profile, bank, False)
-        if answer.kind == "leave" and f.kind == "textarea" and not has_word(f.label, EEO_WORDS + CONSENT_WORDS):
+        if answer.kind == "leave" and f.kind == "textarea" and not is_candidates_own(f):
             answer = answer.model_copy(update={"kind": "open", "problems": [f"Claude unavailable: {error}"]})
         answers.append(answer)
     return answers

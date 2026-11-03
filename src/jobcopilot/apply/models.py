@@ -23,6 +23,7 @@ class FormField(BaseModel):
     max_length: int | None = None
     step: int = 0  # multi-step forms: 0 for the first step read, +1 for each later one
     frame: str = ""  # URL of the iframe holding the field; "" for the main page
+    eeo: bool = False  # a diversity question by its source (Greenhouse compliance block): always the candidate's
 
 
 class FormSnapshot(BaseModel):

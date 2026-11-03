@@ -80,3 +80,12 @@ def test_reads_current_page_without_navigating(page):
 def test_wrapping_labels_are_cleaned(page):
     snap = read_page(page, url("wrapped_labels.html"))
     assert [f.label for f in snap.fields] == ["Full name", "Gender", "Resume/CV"]
+
+
+def test_never_clicks_a_submit_named_apply(page):
+    # Review C1: an "Apply" submit button or a field-less step's "Postuler" button must never be clicked.
+    read_page(page, url("submit_apply.html").replace("submit_apply", "review_step"))
+    assert page.evaluate("window.sub") is False
+    from jobcopilot.apply.browser import _click_apply
+    page.goto(url("submit_apply.html"))
+    assert _click_apply(page) is False and page.evaluate("window.sub") is False

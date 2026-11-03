@@ -15,6 +15,10 @@
     {% set target = 'hx-target="#prep-' ~ job_id ~ '" hx-swap="outerHTML"' %}
     {% if app.status in ("ready", "filled") %}
       <button hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill form</button>
+      <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }} title="After clicking Next in the window on your Mac">Read next step</button>
+    {% endif %}
+    {% if app.status in ("reading", "drafting") %}
+      <button hx-post="/jobs/{{ job_id }}/prepare" {{ target | safe }} hx-disabled-elt="this" title="If it has been stuck for more than 15 minutes">Try again</button>
     {% endif %}
     {% if app.status == "needs_you" %}
       <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }}>Open on my Mac</button>

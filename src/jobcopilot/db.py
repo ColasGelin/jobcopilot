@@ -15,7 +15,8 @@ from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Match, Run
 from jobcopilot.text import normalize
 
 FOLLOW_UP_AFTER = timedelta(days=5)
-STALE_COMMAND_AFTER = timedelta(minutes=10)  # a "taken" command the agent never finished (crash) is offered again
+STALE_COMMAND_AFTER = timedelta(minutes=10)
+STALE_PREP_AFTER = timedelta(minutes=15)  # an application still "reading"/"drafting" after this was interrupted  # a "taken" command the agent never finished (crash) is offered again
 NOT_TO_PREPARE = ("skipped", "rejected", "applied", "interview", "offer")
 _KEEP = object()
 PIPELINE_STATUSES = ("shortlisted", "applied", "interview", "offer", "rejected")
@@ -233,6 +234,14 @@ class DB:
                 f"UPDATE prepared_apps SET {', '.join(f'{k} = ?' for k in changes)} WHERE id = ?", (*changes.values(), app_id)
             )
 
+    def delete_answers(self, app_id: int, steps: set[int] | None = None) -> None:
+        """Before drafting a form (or one step of it) again, so answers are never duplicated."""
+        with self.conn:
+            if steps is None:
+                self.conn.execute("DELETE FROM prepared_answers WHERE app_id = ?", (app_id,))
+            else:
+                self.conn.executemany("DELETE FROM prepared_answers WHERE app_id = ? AND step = ?", [(app_id, s) for s in steps])
+
     def save_answers(self, app_id: int, answers: list[Answer], model: str, prompt_version: str, now: datetime) -> None:
         with self.conn:
             self.conn.executemany(
@@ -271,14 +280,19 @@ class DB:
         ).fetchall()
         return [(r[0], r[1]) for r in rows]
 
-    def jobs_to_prepare(self, min_score: int, limit: int) -> list[str]:
+    def jobs_to_prepare(self, min_score: int, limit: int, now: datetime | None = None) -> list[str]:
+        """Good matches with no application yet, plus applications to retry: Claude was unavailable, or the
+        preparation was interrupted (still reading/drafting after STALE_PREP_AFTER)."""
+        stale = _iso(now - STALE_PREP_AFTER) if now else ""
         rows = self.conn.execute(
             "SELECT e.job_id FROM evaluations e"
             " WHERE e.id = (SELECT max(id) FROM evaluations WHERE job_id = e.job_id) AND e.score >= ?"
-            " AND NOT EXISTS (SELECT 1 FROM prepared_apps p WHERE p.job_id = e.job_id)"
+            " AND NOT EXISTS (SELECT 1 FROM prepared_apps p WHERE p.job_id = e.job_id"
+            "   AND NOT (p.status = 'needs_you' AND p.reason LIKE 'Claude unavailable%')"
+            "   AND NOT (p.status IN ('reading', 'drafting') AND p.updated_at < ?))"
             f" AND coalesce((SELECT status FROM applications a WHERE a.job_id = e.job_id), 'new') NOT IN ({','.join('?' * len(NOT_TO_PREPARE))})"
             " ORDER BY e.score DESC, e.id DESC LIMIT ?",
-            (min_score, *NOT_TO_PREPARE, limit),
+            (min_score, stale, *NOT_TO_PREPARE, limit),
         ).fetchall()
         return [r[0] for r in rows]
 

@@ -65,7 +65,7 @@ class Agent:
             self.pages[app_id] = self.open_page(url)
             self.api.report(cmd_id, "waiting")
             return
-        snap = read_page(page, "")
+        snap = read_page(page, "", click_apply=False)  # the candidate drives this window
         if isinstance(snap, FormSnapshot):
             self.api.post_form(app_id, snap)
             self.api.report(cmd_id, "done")
@@ -84,6 +84,10 @@ class Agent:
                 down = True
                 self.sleep(RETRY_S)
                 continue
+            except Exception as e:  # an HTTP 500, a broken report: never let the agent (and its windows) die
+                self.log(f"Agent error, retrying in 30 s: {e!r}")
+                self.sleep(RETRY_S)
+                continue
             if not handled:
                 self.sleep(POLL_S)
 
@@ -94,10 +98,14 @@ def run_agent(dashboard: str) -> None:
 
     with sync_playwright() as p:
         BROWSER_DIR.mkdir(parents=True, exist_ok=True)
-        context = p.chromium.launch_persistent_context(str(BROWSER_DIR), headless=False)
+        browser = {"context": p.chromium.launch_persistent_context(str(BROWSER_DIR), headless=False)}
 
         def open_page(url: str):
-            page = context.new_page()
+            try:
+                page = browser["context"].new_page()
+            except Exception:  # the candidate quit Chromium: start it again
+                browser["context"] = p.chromium.launch_persistent_context(str(BROWSER_DIR), headless=False)
+                page = browser["context"].new_page()
             page.goto(url, timeout=30_000, wait_until="domcontentloaded")
             page.bring_to_front()
             return page

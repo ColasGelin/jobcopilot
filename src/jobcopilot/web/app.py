@@ -414,7 +414,8 @@ def create_app(
         store, now = db(), clock()
         result = {"filled": list(body.get("filled") or []), "unfilled": list(body.get("unfilled") or []), "error": body.get("error")}
         store.set_command(cmd_id, status, now, result=result)
-        if cmd.action == "fill" and status == "done":
+        current = store.get_prepared(cmd.app_id)
+        if cmd.action == "fill" and status == "done" and result["filled"] and current and current.status in ("ready", "filled"):
             store.update_prepared(cmd.app_id, now, status="filled")
         return {"ok": True}
 
@@ -442,7 +443,10 @@ def create_app(
         prepared_or_404(app_id)
         if preparer_factory is None:
             raise HTTPException(503, "preparing is not configured")
-        return {"status": preparer_factory().ingest(app_id, form, clock()).status}
+        try:
+            return {"status": preparer_factory().ingest(app_id, form, clock()).status}
+        except LLMError as e:
+            raise HTTPException(503, f"Claude is unavailable: {e}")
 
     app.include_router(api)
     return app

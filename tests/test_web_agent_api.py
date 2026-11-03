@@ -125,3 +125,13 @@ def test_unknown_ids_404(env):
     assert c.get("/api/applications/999", headers=AGENT).status_code == 404
     assert c.get("/api/applications/999/cv.pdf", headers=AGENT).status_code == 404
     assert c.post("/api/applications/999/form", headers=AGENT, json=FORM.model_dump()).status_code == 404
+
+
+def test_late_or_empty_fill_result_does_not_change_status(env):
+    c, db, app, *_ = env
+    cmd = db.queue_command(app, "fill", NOW)
+    c.post(f"/api/agent/commands/{cmd}/result", headers=AGENT, json={"status": "done", "filled": []})
+    assert db.get_prepared(app).status == "ready"
+    db.update_prepared(app, NOW, status="applied")
+    c.post(f"/api/agent/commands/{cmd}/result", headers=AGENT, json={"status": "done", "filled": ["email"]})
+    assert db.get_prepared(app).status == "applied"

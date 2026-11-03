@@ -168,3 +168,31 @@ def test_policy_acknowledgement_left(bank):
     fields = [f("p", "AI Policy for Application", "select", options=["Yes", "No"])]
     answers, _ = run(bank, fields, [{"answers": [{"key": "p", "kind": "open", "option": "Yes"}]}])
     assert answers[0].kind == "leave"
+
+
+@pytest.mark.parametrize("label,options", [
+    ("Are you Hispanic/Latino?", ["Yes", "No"]), ("Genre", ["Homme", "Femme"]), ("Quel est votre genre ?", ["A", "B"]),
+    ("Origen étnico", ["A"]), ("Raza", ["A"]), ("Do you identify as transgender?", ["Yes", "No"]), ("LGBTQ+", ["Yes", "No"]),
+    ("Data processing: I accept", ["I accept"]), ("I certify the information is true", ["Yes"]),
+    ("He leído la política de privacidad", ["Sí"]), ("J'autorise le traitement de mes données", ["Oui"]),
+    ("Please tell us", ["Decline to self-identify", "A", "B"]), ("Question 7", ["I don't wish to answer", "Yes"]),
+])
+def test_more_eeo_and_consent_left(bank, label, options):
+    fields = [f("k", label, "select", options=options)]
+    answers, _ = run(bank, fields, [{"answers": [{"key": "k", "kind": "open", "option": options[-1]}]}])
+    assert answers[0].kind == "leave"
+
+
+def test_fields_flagged_eeo_are_left(bank):
+    fields = [f("k", "Some question", "select", options=["Yes", "No"], eeo=True)]
+    answers, _ = run(bank, fields, [{"answers": [{"key": "k", "kind": "open", "option": "No"}]}])
+    assert answers[0].kind == "leave"
+
+
+def test_lower_word_limits_in_help_text():
+    from jobcopilot.apply.draft import word_limit
+
+    assert word_limit(f("a", "A", "textarea", description="Please keep it under 100 words.")) == 100
+    assert word_limit(f("a", "A", "textarea", description="Max 50 words")) == 50
+    assert word_limit(f("a", "A", "textarea", description="Great answers are 200-400 words.")) == 400
+    assert word_limit(f("a", "A", "textarea")) == 150

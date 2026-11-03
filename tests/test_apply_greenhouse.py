@@ -31,3 +31,9 @@ def test_snapshot_from_greenhouse():
     assert why.description == "Great answers are 200-400 words. Please do not use AI to write this answer."
     assert "Build agents at Acme." in snap.page_text and "do not use AI" in snap.page_text
     assert snap.url == "https://u"
+
+
+def test_compliance_questions_flagged_eeo():
+    snap = snapshot_from_greenhouse(json.loads(FIXTURE.read_text()), "https://u")
+    assert next(f for f in snap.fields if f.key == "veteran_status").eeo
+    assert not next(f for f in snap.fields if f.key == "question_2").eeo

@@ -55,11 +55,17 @@ def _extract(page) -> list[tuple[str, dict]]:
     return frames
 
 
+# A control that would submit a form (submit inputs, buttons inside a form without type="button") is never
+# clicked, whatever it says: a form's own "Apply" button sends the application.
+_SUBMITS = """e => e.tagName === 'INPUT' || (e.tagName === 'BUTTON' && !!e.form && (e.getAttribute('type') || 'submit') !== 'button')"""
+
+
 def _click_apply(page) -> bool:
-    for candidate in page.locator("a, button, [role=button], input[type=button], input[type=submit]").all():
+    """Click a visible "Apply" link or button that reveals the form. Never one that submits a form."""
+    for candidate in page.locator("a, button, [role=button]").all():
         try:
-            text = candidate.inner_text(timeout=1000) or candidate.get_attribute("value") or ""
-            if _APPLY.match(text) and candidate.is_visible():
+            text = candidate.inner_text(timeout=1000) or ""
+            if _APPLY.match(text) and candidate.is_visible() and not candidate.evaluate(_SUBMITS):
                 candidate.click(timeout=5000)
                 return True
         except Exception:

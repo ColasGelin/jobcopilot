@@ -13,7 +13,7 @@ from jobcopilot.apply.models import FormField, FormSnapshot, NeedsYou, PreparedA
 from jobcopilot.apply.voice import load_voice
 from jobcopilot.config import Profile, Settings
 from jobcopilot.cv.bank import Bank, BankError
-from jobcopilot.db import DB
+from jobcopilot.db import DB, STALE_PREP_AFTER
 from jobcopilot.llm import LLMClient, LLMError, LLMUnavailable
 from jobcopilot.models import Job
 
@@ -35,19 +35,32 @@ class Preparer:
         if job is None:
             raise ValueError(f"unknown job {job_id!r}")
         existing = self.db.prepared_for_job(job_id)
-        if existing and existing.status != "needs_you":
+        if existing and not self._retryable(existing, now):
             return existing
         if existing:
             app_id = existing.id
             self.db.update_prepared(app_id, now, status="reading")
         else:
             app_id = self.db.create_prepared(job_id, "reading", now)
-        result = self.read(job)
-        if isinstance(result, NeedsYou):
-            self.db.update_prepared(app_id, now, status="needs_you", reason=result.reason)
+        try:
+            result = self.read(job)
+            if isinstance(result, NeedsYou):
+                self.db.update_prepared(app_id, now, status="needs_you", reason=result.reason)
+                return self.db.get_prepared(app_id)
+            self.db.delete_answers(app_id)  # a re-read replaces the earlier answers
+            self.db.update_prepared(app_id, now, status="drafting", reason=None, form=result)
+            return self._draft(app_id, job, result, result.fields, now)
+        except LLMUnavailable:
+            raise
+        except Exception as e:  # never leave it "reading"/"drafting": the card would wait forever
+            log.exception("preparing %s failed", job_id)
+            self.db.update_prepared(app_id, now, status="needs_you", reason=f"Preparing failed: {str(e)[:200] or repr(e)}")
             return self.db.get_prepared(app_id)
-        self.db.update_prepared(app_id, now, status="drafting", reason=None, form=result)
-        return self._draft(app_id, job, result, result.fields, now)
+
+    @staticmethod
+    def _retryable(app: PreparedApp, now: datetime) -> bool:
+        stuck = app.status in ("reading", "drafting") and app.updated_at < now - STALE_PREP_AFTER
+        return app.status == "needs_you" or stuck
 
     def ingest(self, app_id: int, form: FormSnapshot, now: datetime) -> PreparedApp:
         """A form step read on the Mac (after a sign-in or a "Next"): add it as the next step and draft it."""
@@ -55,16 +68,26 @@ class Preparer:
         if app is None:
             raise ValueError(f"unknown application {app_id}")
         old = app.form.fields if app.form else []
-        step = max(f.step for f in old) + 1 if old else 0
+        last = max((f.step for f in old), default=-1)
+        if last >= 0 and {f.key for f in form.fields} == {f.key for f in old if f.step == last}:
+            step = last  # the same page read twice (Continue clicked again): replace that step
+        else:
+            step = last + 1
         new = [f.model_copy(update={"step": step}) for f in form.fields]
-        merged = FormSnapshot(url=form.url, page_text=form.page_text, fields=old + new)
+        merged = FormSnapshot(url=form.url, page_text=form.page_text, fields=[f for f in old if f.step != step] + new)
         self.db.update_prepared(app_id, now, status="drafting", reason=None, form=merged)
-        return self._draft(app_id, self.db.get_job(app.job_id), merged, new, now)
+        try:
+            self.db.delete_answers(app_id, {step})
+            return self._draft(app_id, self.db.get_job(app.job_id), merged, new, now)
+        except LLMUnavailable:
+            if app.status in ("ready", "filled"):  # keep the application usable; the agent reports the error
+                self.db.update_prepared(app_id, now, status=app.status, reason=None, form=app.form or merged)
+            raise
 
     def prepare_pending(self, now: datetime) -> int:
         """After a daily run: prepare the best new matches, up to the cap. Returns how many became ready."""
         done = 0
-        for job_id in self.db.jobs_to_prepare(self.settings.prepare.min_score, self.settings.prepare.max_per_run):
+        for job_id in self.db.jobs_to_prepare(self.settings.prepare.min_score, self.settings.prepare.max_per_run, now):
             try:
                 done += self.prepare_job(job_id, now).status == "ready"
             except LLMUnavailable as e:

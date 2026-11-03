@@ -163,3 +163,13 @@ def test_routes_require_htmx_and_404_unknown(home):
     assert c.post("/jobs/nope/prepare").status_code == 404
     for action in ("fill", "open", "continue", "applied"):
         assert c.post(f"/applications/999/{action}").status_code == 404
+
+
+def test_read_next_step_offered_after_fill_and_try_again_when_stuck(home):
+    tmp, job, db = home
+    app = seed_app(db, job.id, status="filled")
+    c, _ = client(tmp)
+    page = c.get(f"/jobs/{job.id}/application").text
+    assert "Read next step" in page and f'hx-post="/applications/{app}/open"' in page
+    db.update_prepared(app, NOW, status="reading")
+    assert "Try again" in c.get(f"/jobs/{job.id}/application").text

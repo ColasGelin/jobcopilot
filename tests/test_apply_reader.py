@@ -56,3 +56,10 @@ def test_browser_missing(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
     assert reader.read_in_browser("https://x") == NeedsYou(reason="Browser not installed on the server")
+
+
+def test_greenhouse_odd_payload_falls_back_to_browser(monkeypatch):
+    monkeypatch.setattr(reader, "read_in_browser", lambda url: NeedsYou(reason="from browser"))
+    out = reader.read_form("https://job-boards.greenhouse.io/acme/jobs/123", "Acme", [],
+                           client(lambda r: httpx.Response(200, json={"questions": "oops"})))
+    assert out == NeedsYou(reason="from browser")

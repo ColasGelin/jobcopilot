@@ -36,7 +36,7 @@ def greenhouse_ref(url: str, company: str, watchlist: list[WatchlistEntry]) -> t
     return None
 
 
-def _fields(question: dict) -> list[FormField]:
+def _fields(question: dict, eeo: bool = False) -> list[FormField]:
     fields = [f for f in question.get("fields") or [] if f.get("type") in _TYPES]
     if any(f["type"] == "input_file" for f in fields):  # "upload, or paste the text": keep the upload
         fields = [f for f in fields if f["type"] == "input_file"]
@@ -45,6 +45,7 @@ def _fields(question: dict) -> list[FormField]:
             key=f["name"], selector=f"#{f['name']}", label=(question.get("label") or "").strip(),
             description=html_to_text(question.get("description") or ""), kind=_TYPES[f["type"]],
             options=[str(v.get("label", "")) for v in f.get("values") or []], required=bool(question.get("required")),
+            eeo=eeo,
         )
         for f in fields
     ]
@@ -52,9 +53,9 @@ def _fields(question: dict) -> list[FormField]:
 
 def snapshot_from_greenhouse(data: dict, url: str) -> FormSnapshot:
     questions = list(data.get("questions") or []) + list(data.get("location_questions") or [])
-    for block in data.get("compliance") or []:
-        questions += block.get("questions") or []
     fields = [field for q in questions for field in _fields(q)]
+    for block in list(data.get("compliance") or []) + [{"questions": data.get("demographic_questions") or []}]:
+        fields += [field for q in block.get("questions") or [] for field in _fields(q, eeo=True)]
     texts = [html_to_text(data.get("content") or ""), html_to_text(data.get("ai_disclaimer") or "")]
     texts += [f.description for f in fields if f.description]
     return FormSnapshot(url=url, page_text="\n".join(t for t in texts if t)[:PAGE_TEXT_LIMIT], fields=fields)

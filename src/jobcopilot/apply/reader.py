@@ -23,7 +23,10 @@ def read_in_browser(url: str) -> FormSnapshot | NeedsYou:
 
     started = time.monotonic()
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception as e:  # Playwright installed but no browser
+            return NeedsYou(reason=f"{NO_BROWSER}: {str(e).splitlines()[0][:150]}")
         try:
             page = browser.new_page()
             page.set_default_timeout(JOB_TIMEOUT_S * 1000)
@@ -46,6 +49,6 @@ def read_form(url: str, company: str, watchlist: list[WatchlistEntry], http: htt
             response = http.get(QUESTIONS_URL.format(slug=ref[0], id=ref[1]), timeout=30)
             response.raise_for_status()
             return snapshot_from_greenhouse(response.json(), url)
-        except (httpx.HTTPError, ValueError):
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
             pass  # job closed or API changed: try the page itself
     return read_in_browser(url)
