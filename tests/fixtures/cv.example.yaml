@@ -1,0 +1,61 @@
+# Experience bank for jobcopilot's tailored CVs (fictional example).
+# Copy to data/cv.yaml and replace with your own facts. Everything here may appear on a CV;
+# items with `main: true` make up the main CV, the rest is extra material for tailoring.
+contact:
+  name: Alex Martin
+  location: Valencia, Spain
+  email: alex@example.com
+  phone: "+34 600 000 000"
+  linkedin: linkedin.com/in/alex-martin
+  github: github.com/alexmartin
+  website: alexmartin.dev
+headlines: [AI Engineer, Backend Engineer (Python), Machine Learning Engineer]
+main_headline: AI Engineer
+summary: >-
+  AI engineer building RAG pipelines and agents with Python and LangGraph. Ships to Kubernetes
+  with Docker and CI/CD, and enjoys turning prototypes into products.
+experience:
+  - id: acme
+    title: AI Engineer
+    company: Acme Analytics
+    location: Valencia
+    dates: Jan 2025 – Present
+    bullets:
+      - {id: acme.rag, text: "Built a RAG assistant over 2,000 support articles with LangChain and Qdrant.", tags: [rag, llm], main: true}
+      - {id: acme.mcp, text: "Wrote an MCP server so agents can query the PostgreSQL database and create reports.", tags: [mcp, backend], main: true}
+      - {id: acme.k8s, text: "Deployed every service on Kubernetes with Docker and a GitLab CI pipeline.", tags: [devops], main: true}
+      - {id: acme.ui, text: "Designed the React frontend for the reporting module.", tags: [frontend]}
+  - id: beta
+    title: Python Developer (intern)
+    company: Beta Labs
+    location: Remote
+    dates: Mar 2024 – Dec 2024
+    bullets:
+      - {id: beta.api, text: "Built FastAPI services used by 3 internal teams.", tags: [backend], main: true}
+      - {id: beta.etl, text: "Wrote ETL jobs in Python and SQL feeding the analytics warehouse.", tags: [data], main: true}
+      - {id: beta.tests, text: "Raised test coverage to 85% with pytest.", tags: [testing]}
+      - {id: beta.docs, text: "Documented the API for partner integrations.", tags: [docs]}
+projects:
+  - {id: k8s-lab, section: engineering, name: Cluster Lab, text: "Kubernetes cluster with K3s and Argo CD deployments.", tags: [devops], main: true}
+  - {id: mlp, section: engineering, name: Neural Net, text: "Multilayer perceptron from scratch in NumPy, 95% accuracy.", tags: [ml], main: true}
+  - {id: rl, section: engineering, name: Snake Agent, text: "Reinforcement-learning agent trained with Q-learning.", tags: [ml]}
+  - {id: agentlab, section: engineering, name: Agent Lab, status: in_progress, text: "Production-ready agent platform with LangGraph.", tags: [llm]}
+  - {id: hack1, section: hackathons, name: "1st place · City Hackathon", text: "Air-quality map built with React and Python in 48 hours.", tags: [frontend], main: true}
+  - {id: hack2, section: hackathons, name: "2nd place · Health Jam", text: "Voice assistant for nurses using Whisper.", tags: [llm]}
+  - {id: hack3, section: hackathons, name: "Finalist · Green Code", text: "Energy dashboard in Vue.", tags: [frontend]}
+skills:
+  - {group: LLM systems, items: [RAG, LangChain, LangGraph, MCP, Qdrant]}
+  - {group: Backend, items: [Python, FastAPI, PostgreSQL, SQL]}
+  - {group: Infrastructure, items: [Docker, Kubernetes, K3s, Argo CD, GitLab CI]}
+  - {group: Frontend, items: [React, TypeScript, Vue]}
+  - {group: Machine learning, items: [NumPy, PyTorch, scikit-learn]}
+education:
+  - {id: school, school: Code School, degree: "Master's level diploma in Computer Science", place: Valencia, dates: 2022 – 2026}
+certifications:
+  - {id: cert1, name: Example Academy, detail: "Agents in production", date: Jun 2026}
+languages:
+  - {name: Spanish, level: Native}
+  - {name: English, level: C1}
+extras:
+  - {id: lifeguard, section: other, text: "Lifeguard at a city pool (summers 2021–2022).", main: true}
+  - {id: chess, section: interests, text: "Chess, climbing", main: true}

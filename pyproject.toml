@@ -12,6 +12,7 @@ dependencies = [
     "pyyaml",
     "typer",
     "uvicorn>=0.54.0",
+    "weasyprint>=70.0",
 ]
 
 [project.scripts]
