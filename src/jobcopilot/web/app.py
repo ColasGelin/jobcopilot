@@ -7,12 +7,13 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.templating import Jinja2Templates
 
+from jobcopilot.apply.models import FormSnapshot
 from jobcopilot.config import CompanyToCheck
 from jobcopilot.cv.bank import BankError, load_bank
 from jobcopilot.cv.content import CvContent, main_content
@@ -376,4 +377,72 @@ def create_app(
         store.update_prepared(app_id, now, status="applied")
         return prep_fragment(request, prepared.job_id)
 
+    # --- JSON API for the Mac agent ----------------------------------------------
+    def require_agent(request: Request) -> None:
+        # Like HX-Request: a cross-site page cannot set a custom header, so it cannot drive the agent.
+        if request.headers.get("x-jobcopilot-agent") != "1":
+            raise HTTPException(403, "requests must come from the jobcopilot agent")
+
+    api = APIRouter(prefix="/api", dependencies=[Depends(require_agent)])
+
+    def command_or_404(cmd_id: int):
+        cmd = db().get_command(cmd_id)
+        if cmd is None:
+            raise HTTPException(404, "unknown command")
+        return cmd
+
+    @api.get("/agent/next")
+    def agent_next():
+        store = db()
+        cmd = store.take_next_command(clock())
+        if cmd is None:
+            return Response(status_code=204)
+        job = store.get_job(store.get_prepared(cmd.app_id).job_id)
+        return {"id": cmd.id, "app_id": cmd.app_id, "action": cmd.action, "url": job.url}
+
+    @api.get("/agent/commands/{cmd_id}")
+    def agent_command(cmd_id: int):
+        cmd = command_or_404(cmd_id)
+        return {"id": cmd.id, "status": cmd.status}
+
+    @api.post("/agent/commands/{cmd_id}/result")
+    def agent_result(cmd_id: int, body: dict):
+        cmd = command_or_404(cmd_id)
+        status = body.get("status")
+        if status not in ("waiting", "done", "failed"):
+            raise HTTPException(400, "status must be waiting, done or failed")
+        store, now = db(), clock()
+        result = {"filled": list(body.get("filled") or []), "unfilled": list(body.get("unfilled") or []), "error": body.get("error")}
+        store.set_command(cmd_id, status, now, result=result)
+        if cmd.action == "fill" and status == "done":
+            store.update_prepared(cmd.app_id, now, status="filled")
+        return {"ok": True}
+
+    @api.get("/applications/{app_id}")
+    def agent_application(app_id: int):
+        store = db()
+        prepared = prepared_or_404(app_id)
+        fields = {(f.key, f.step): f for f in (prepared.form.fields if prepared.form else [])}
+        answers = store.answers(app_id)
+        last_step = max((a.step for a in answers), default=0)
+        payload = []
+        for a in answers:
+            field = fields.get((a.field_key, a.step))
+            if field is None or a.step != last_step or a.kind == "leave" or (a.kind != "cv" and not a.final.strip()):
+                continue
+            payload.append(field.model_dump() | {"value": a.final, "answer_kind": a.kind})
+        return {"job_url": store.get_job(prepared.job_id).url, "fields": payload}
+
+    @api.get("/applications/{app_id}/cv.pdf")
+    def agent_cv(app_id: int):
+        return tailored_pdf(prepared_or_404(app_id).job_id)
+
+    @api.post("/applications/{app_id}/form")
+    def agent_form(app_id: int, form: FormSnapshot):
+        prepared_or_404(app_id)
+        if preparer_factory is None:
+            raise HTTPException(503, "preparing is not configured")
+        return {"status": preparer_factory().ingest(app_id, form, clock()).status}
+
+    app.include_router(api)
     return app
