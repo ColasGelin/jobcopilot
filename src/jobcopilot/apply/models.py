@@ -16,6 +16,7 @@ class FormField(BaseModel):
     key: str
     selector: str
     label: str
+    description: str = ""  # help text shown with the question ("great answers are 200-400 words")
     kind: FieldKind
     options: list[str] = Field(default_factory=list)
     required: bool = False

@@ -1,0 +1,24 @@
+{
+  "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/123",
+  "id": 123,
+  "title": "AI Engineer",
+  "content": "&lt;p&gt;Build agents at Acme.&lt;/p&gt;",
+  "include_ai_disclaimer": false,
+  "ai_disclaimer": "<p>We use a matching tool.</p>",
+  "questions": [
+    {"description": null, "label": "First Name", "required": true, "fields": [{"name": "first_name", "type": "input_text", "values": []}]},
+    {"description": null, "label": "Email", "required": true, "fields": [{"name": "email", "type": "input_text", "values": []}]},
+    {"description": null, "label": "Resume/CV", "required": true, "fields": [{"name": "resume", "type": "input_file", "values": []}, {"name": "resume_text", "type": "textarea", "values": []}]},
+    {"description": "<p>Great answers are 200-400 words. Please do not use AI to write this answer.</p>", "label": "Why Acme?", "required": true, "fields": [{"name": "question_1", "type": "textarea", "values": []}]},
+    {"description": null, "label": "Do you require visa sponsorship?", "required": true, "fields": [{"name": "question_2", "type": "multi_value_single_select", "values": [{"label": "Yes", "value": 1}, {"label": "No", "value": 0}]}]},
+    {"description": null, "label": "Which languages do you speak?", "required": false, "fields": [{"name": "question_3", "type": "multi_value_multi_select", "values": [{"label": "English", "value": 1}, {"label": "Spanish", "value": 2}]}]},
+    {"description": null, "label": "Tracking", "required": false, "fields": [{"name": "hidden_field", "type": "input_hidden", "values": []}]}
+  ],
+  "location_questions": [
+    {"description": null, "label": "Latitude", "required": true, "fields": [{"name": "latitude", "type": "input_hidden", "values": []}]},
+    {"description": null, "label": "Location", "required": true, "fields": [{"name": "location", "type": "input_text", "values": []}]}
+  ],
+  "compliance": [
+    {"type": "eeoc", "questions": [{"required": false, "label": "VeteranStatus", "fields": [{"name": "veteran_status", "type": "multi_value_single_select", "values": [{"label": "I don't wish to answer", "value": "3"}]}]}]}
+  ]
+}
