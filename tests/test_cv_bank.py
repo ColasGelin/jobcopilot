@@ -80,3 +80,20 @@ def test_in_progress_flag_carried(tmp_path):
 def test_bullet_owner():
     owner = load_bank(EXAMPLE).bullet_owner()
     assert owner["acme.mcp"] == "acme" and owner["beta.etl"] == "beta"
+
+
+def test_main_skills_use_main_items_and_skip_non_main_groups(tmp_path):
+    def change(d):
+        d["skills"][0]["main_items"] = ["RAG", "MCP"]
+        d["skills"][4]["main"] = False
+        d["education"].append({"id": "bac", "school": "Lycée", "degree": "Baccalauréat", "main": False})
+    content = main_content(load_bank(write_variant(tmp_path, change)))
+    assert content.skills[0].items == ["RAG", "MCP"]
+    assert [g.group for g in content.skills] == ["LLM systems", "Backend", "Infrastructure", "Frontend"]
+    assert [e.school for e in content.education] == ["Code School"]
+
+
+def test_main_items_must_be_in_items(tmp_path):
+    path = write_variant(tmp_path, lambda d: d["skills"][0].update(main_items=["Cobol"]))
+    with pytest.raises(BankError, match="Cobol"):
+        load_bank(path)

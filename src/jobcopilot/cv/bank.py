@@ -42,6 +42,15 @@ class Project(BaseModel):
 class SkillGroup(BaseModel):
     group: str
     items: list[str]
+    main: bool = True                    # shown on the main CV
+    main_items: list[str] | None = None  # shorter list for the main CV; all items stay available to tailoring
+
+    @model_validator(mode="after")
+    def _main_items_known(self) -> SkillGroup:
+        unknown = [i for i in self.main_items or [] if i not in self.items]
+        if unknown:
+            raise ValueError(f"main_items {unknown} are not in items of {self.group!r}")
+        return self
 
 
 class Education(BaseModel):
@@ -50,6 +59,7 @@ class Education(BaseModel):
     degree: str
     place: str = ""
     dates: str = ""
+    main: bool = True
 
 
 class Certification(BaseModel):
@@ -57,6 +67,7 @@ class Certification(BaseModel):
     name: str
     detail: str = ""
     date: str = ""
+    main: bool = True
 
 
 class Language(BaseModel):
