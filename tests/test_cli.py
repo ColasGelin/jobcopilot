@@ -92,3 +92,37 @@ def test_cli_cv_writes_main_pdf(tmp_path):
 def test_cli_cv_missing_bank(tmp_path):
     result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "cv"])
     assert result.exit_code == 1 and "cv.yaml" in result.output
+
+
+def test_cli_cv_job_unknown(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    shutil.copy(Path(__file__).parent / "fixtures" / "cv.example.yaml", tmp_path / "cv.yaml")
+    result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "cv", "--job", "nope"])
+    assert result.exit_code == 1 and "nope" in result.output
+
+
+def test_cli_cv_job_tailors(monkeypatch, tmp_path):
+    import shutil
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    from conftest import make_job
+    from jobcopilot.db import DB
+    from jobcopilot.llm import FakeLLMClient
+
+    shutil.copy(Path(__file__).parent / "fixtures" / "cv.example.yaml", tmp_path / "cv.yaml")
+    job = make_job(1, company="Acme")
+    DB(tmp_path / "jobs.db").insert_jobs([job], datetime(2026, 11, 3, tzinfo=timezone.utc))
+    fake = FakeLLMClient([{
+        "language": "en", "headline": "AI Engineer", "summary": "AI engineer.",
+        "experience": [{"id": "acme", "bullets": [{"source_id": "acme.rag", "text": "Built a RAG assistant."}]},
+                       {"id": "beta", "bullets": [{"source_id": "beta.api", "text": "Built FastAPI services."}]}],
+        "projects": [], "skills": [], "extras": [],
+    }])
+    monkeypatch.setattr(cli, "ClaudeCodeClient", lambda **kw: fake)
+    result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "cv", "--job", job.id])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "cvs" / f"{job.id}-acme.pdf").exists()
+    assert DB(tmp_path / "jobs.db").latest_tailored_cv(job.id) is not None

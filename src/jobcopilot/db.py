@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from jobcopilot.cv.content import CvContent
 from jobcopilot.models import STATUSES, Draft, Evaluation, Job, Match, Run
 from jobcopilot.text import normalize
 
@@ -34,6 +35,10 @@ CREATE TABLE IF NOT EXISTS applications (
     next_follow_up_at TEXT, notes TEXT, updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS company_checks (name TEXT PRIMARY KEY, checked_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS tailored_cvs (
+    id INTEGER PRIMARY KEY, job_id TEXT REFERENCES jobs(id), language TEXT, content TEXT, pages INTEGER,
+    model TEXT, prompt_version TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
     kept INTEGER, scored INTEGER, drafted INTEGER, failed_sources TEXT, error TEXT
@@ -97,7 +102,7 @@ class DB:
 
     def delete_jobs(self, job_ids: list[str]) -> None:
         with self.conn:
-            for table, col in (("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
+            for table, col in (("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
                 self.conn.executemany(f"DELETE FROM {table} WHERE {col} = ?", [(i,) for i in job_ids])
 
     def get_job(self, job_id: str) -> Job | None:
@@ -111,6 +116,24 @@ class DB:
 
     def known_urls(self) -> set[str]:
         return {r[0] for r in self.conn.execute("SELECT url FROM jobs")}
+
+    # --- tailored CVs ---------------------------------------------------------
+    def save_tailored_cv(self, job_id: str, content: CvContent, pages: int, model: str, prompt_version: str) -> None:
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO tailored_cvs (job_id, language, content, pages, model, prompt_version) VALUES (?,?,?,?,?,?)",
+                (job_id, content.language, content.model_dump_json(), pages, model, prompt_version),
+            )
+
+    def latest_tailored_cv(self, job_id: str) -> tuple[CvContent, int, datetime] | None:
+        """(content, pages, created_at UTC) of the newest tailored CV for the job."""
+        row = self.conn.execute(
+            "SELECT content, pages, created_at FROM tailored_cvs WHERE job_id = ? ORDER BY id DESC LIMIT 1", (job_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        created = datetime.fromisoformat(row["created_at"]).replace(tzinfo=timezone.utc)
+        return CvContent.model_validate_json(row["content"]), row["pages"], created
 
     # --- evaluations and drafts --------------------------------------------
     def save_evaluation(self, e: Evaluation) -> None:

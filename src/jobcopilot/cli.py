@@ -97,7 +97,7 @@ def serve(
     uvicorn.run(web.create_app(settings.db_path, min_score=settings.min_score, companies=settings.companies_to_check), host=host, port=port)
 
 
-def _write_pdf(path: Path, content) -> None:
+def _write_pdf(path: Path, content) -> int:
     from jobcopilot.cv.render import render_pdf
 
     result = render_pdf(content)
@@ -106,13 +106,16 @@ def _write_pdf(path: Path, content) -> None:
     typer.echo(f"CV: {path}")
     if result.pages > 1:
         typer.echo(f"Warning: {result.pages} pages. Trim the main items in cv.yaml.")
+    return result.pages
 
 
 @app.command()
-def cv(ctx: typer.Context):
-    """Render the main CV from cv.yaml to cvs/cv-main.pdf."""
+def cv(ctx: typer.Context, job: str = typer.Option(None, help="Job id: tailor the CV to this job with Claude.")):
+    """Render the main CV from cv.yaml to cvs/cv-main.pdf, or a CV tailored to one job (--job)."""
     from jobcopilot.cv.bank import BankError, load_bank
     from jobcopilot.cv.content import main_content
+    from jobcopilot.cv.tailor import TAILOR_PROMPT_VERSION, TailorError, cv_filename, tailor_cv
+    from jobcopilot.llm import LLMError
 
     settings = load_settings(ctx.obj / "config.yaml")
     try:
@@ -120,7 +123,26 @@ def cv(ctx: typer.Context):
     except BankError as e:
         typer.echo(str(e))
         raise typer.Exit(1)
-    _write_pdf(settings.cvs_dir / "cv-main.pdf", main_content(bank))
+    if job is None:
+        _write_pdf(settings.cvs_dir / "cv-main.pdf", main_content(bank))
+        return
+    db = DB(settings.db_path)
+    target = db.get_job(job)
+    if target is None:
+        typer.echo(f"Unknown job {job!r}.")
+        raise typer.Exit(1)
+    match = db.match(job)
+    llm = ClaudeCodeClient(timeout_s=settings.llm.timeout_s)
+    try:
+        content = tailor_cv(target, match.evaluation if match else None, bank, llm, settings.llm.draft_model)
+    except TailorError as e:
+        typer.echo("Tailoring failed; the answer broke these rules:\n- " + "\n- ".join(e.violations))
+        raise typer.Exit(1)
+    except LLMError as e:
+        typer.echo(f"Claude is unavailable: {e}")
+        raise typer.Exit(1)
+    pages = _write_pdf(settings.cvs_dir / cv_filename(target), content)
+    db.save_tailored_cv(job, content, pages, settings.llm.draft_model, TAILOR_PROMPT_VERSION)
 
 
 @app.command("import-legacy")

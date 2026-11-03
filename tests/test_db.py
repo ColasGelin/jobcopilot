@@ -170,3 +170,30 @@ def test_unmark_company(db):
     db.mark_company_checked("A", NOW)
     db.unmark_company("A")
     assert db.company_checks() == {}
+
+
+def test_tailored_cv_roundtrip_latest_wins(db):
+    from pathlib import Path
+
+    from jobcopilot.cv.bank import load_bank
+    from jobcopilot.cv.content import main_content
+
+    content = main_content(load_bank(Path(__file__).parent / "fixtures" / "cv.example.yaml"))
+    db.insert_jobs([job()], NOW)
+    assert db.latest_tailored_cv(job().id) is None
+    db.save_tailored_cv(job().id, content, pages=1, model="sonnet", prompt_version="tailor_v1")
+    db.save_tailored_cv(job().id, content.model_copy(update={"language": "fr"}), pages=2, model="sonnet", prompt_version="tailor_v1")
+    latest, pages, created_at = db.latest_tailored_cv(job().id)
+    assert latest.language == "fr" and pages == 2 and created_at is not None
+
+
+def test_delete_jobs_removes_tailored_cvs(db):
+    from pathlib import Path
+
+    from jobcopilot.cv.bank import load_bank
+    from jobcopilot.cv.content import main_content
+
+    db.insert_jobs([job()], NOW)
+    db.save_tailored_cv(job().id, main_content(load_bank(Path(__file__).parent / "fixtures" / "cv.example.yaml")), 1, "m", "v")
+    db.delete_jobs([job().id])
+    assert db.latest_tailored_cv(job().id) is None
