@@ -76,3 +76,19 @@ def test_cli_serve_passes_min_score(monkeypatch, tmp_path):
     monkeypatch.setattr(web, "create_app", lambda db_path, **kw: captured.update(kw) or real(db_path, **kw))
     RUNNER.invoke(cli.app, ["--home", str(tmp_path), "serve"])
     assert captured.get("min_score") == 70
+
+
+def test_cli_cv_writes_main_pdf(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    shutil.copy(Path(__file__).parent / "fixtures" / "cv.example.yaml", tmp_path / "cv.yaml")
+    result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "cv"])
+    assert result.exit_code == 0, result.output
+    pdf = tmp_path / "cvs" / "cv-main.pdf"
+    assert pdf.read_bytes()[:4] == b"%PDF" and "cv-main.pdf" in result.output
+
+
+def test_cli_cv_missing_bank(tmp_path):
+    result = RUNNER.invoke(cli.app, ["--home", str(tmp_path), "cv"])
+    assert result.exit_code == 1 and "cv.yaml" in result.output

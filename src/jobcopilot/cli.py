@@ -1,4 +1,4 @@
-"""Command-line entry point: `jobcopilot run`, `import-legacy`, `install-schedule`, `uninstall-schedule`."""
+"""Command-line entry point: `jobcopilot run`, `serve`, `cv`, `import-legacy`, `install-schedule`, `uninstall-schedule`."""
 
 from __future__ import annotations
 
@@ -95,6 +95,32 @@ def serve(
 
     settings = load_settings(ctx.obj / "config.yaml")
     uvicorn.run(web.create_app(settings.db_path, min_score=settings.min_score, companies=settings.companies_to_check), host=host, port=port)
+
+
+def _write_pdf(path: Path, content) -> None:
+    from jobcopilot.cv.render import render_pdf
+
+    result = render_pdf(content)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(result.pdf)
+    typer.echo(f"CV: {path}")
+    if result.pages > 1:
+        typer.echo(f"Warning: {result.pages} pages. Trim the main items in cv.yaml.")
+
+
+@app.command()
+def cv(ctx: typer.Context):
+    """Render the main CV from cv.yaml to cvs/cv-main.pdf."""
+    from jobcopilot.cv.bank import BankError, load_bank
+    from jobcopilot.cv.content import main_content
+
+    settings = load_settings(ctx.obj / "config.yaml")
+    try:
+        bank = load_bank(settings.cv_path)
+    except BankError as e:
+        typer.echo(str(e))
+        raise typer.Exit(1)
+    _write_pdf(settings.cvs_dir / "cv-main.pdf", main_content(bank))
 
 
 @app.command("import-legacy")

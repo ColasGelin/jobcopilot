@@ -94,6 +94,8 @@ class Bank(BaseModel):
     certifications: list[Certification] = []
     languages: list[Language] = []
     extras: list[Extra] = []
+    # Per-language overrides of section titles, e.g. {en: {engineering: "Engineering · 42 School"}}.
+    section_titles: dict[Literal["en", "es", "fr"], dict[str, str]] = {}
 
     @model_validator(mode="after")
     def _check(self) -> Bank:

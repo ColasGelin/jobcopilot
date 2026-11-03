@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="{{ cv.language }}">
+<head>
+<meta charset="utf-8">
+<title>{{ cv.contact.name }} — CV</title>
+<style>{{ css | safe }}</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="top">
+      <h1>{{ cv.contact.name }}</h1>
+      <div class="headline">{{ cv.headline }}</div>
+    </div>
+    <p class="contact">
+      <span>{{ cv.contact.location }}</span>
+      <span class="link">{{ cv.contact.email }}</span>
+      {% if cv.contact.phone %}<span>{{ cv.contact.phone }}</span>{% endif %}
+      {% for link in [cv.contact.linkedin, cv.contact.github, cv.contact.website] if link %}<span class="link">{{ link }}</span>{% endfor %}
+    </p>
+  </header>
+  <p class="summary">{{ cv.summary }}</p>
+  <div class="columns">
+    <div class="main">
+      <h2>{{ t.experience }}</h2>
+      {% for e in cv.experience %}
+      <section class="job">
+        <div class="job-head"><span class="job-title">{{ e.title }} · {{ e.company }}</span><span class="dates">{{ e.dates }}</span></div>
+        {% if e.location %}<div class="place">{{ e.location }}</div>{% endif %}
+        <ul>{% for b in e.bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+      </section>
+      {% endfor %}
+      {% for key in ["engineering", "hackathons"] if cv[key] %}
+      <h2>{{ t[key] }}</h2>
+      {% for p in cv[key] %}<p class="project"><b>{{ p.name }}{% if p.in_progress %} {{ t.in_progress }}{% endif %}.</b> {{ p.text }}</p>{% endfor %}
+      {% endfor %}
+      {% if cv.other %}
+      <h2>{{ t.other }}</h2>
+      {% for o in cv.other %}<p class="project">{{ o }}</p>{% endfor %}
+      {% endif %}
+    </div>
+    <aside>
+      {% if cv.skills %}
+      <h2>{{ t.skills }}</h2>
+      {% for g in cv.skills %}<div class="skill"><b>{{ g.group }}</b><br>{{ g["items"] | join(", ") }}</div>{% endfor %}
+      {% endif %}
+      {% if cv.education %}
+      <h2>{{ t.education }}</h2>
+      {% for ed in cv.education %}<div class="skill"><b>{{ ed.school }}</b><br>{{ ed.degree }}{% if ed.place or ed.dates %}<br>{{ ed.place }}{% if ed.place and ed.dates %} · {% endif %}{{ ed.dates }}{% endif %}</div>{% endfor %}
+      {% endif %}
+      {% if cv.certifications %}
+      <h2>{{ t.certifications }}</h2>
+      {% for c in cv.certifications %}<div class="skill"><b>{{ c.name }}</b>{% if c.detail %}<br>{{ c.detail }}{% endif %}{% if c.date %}<br>{{ c.date }}{% endif %}</div>{% endfor %}
+      {% endif %}
+      {% if cv.languages %}
+      <h2>{{ t.languages }}</h2>
+      <table class="langs">{% for l in cv.languages %}<tr><td>{{ l.name }}</td><td>{{ l.level }}</td></tr>{% endfor %}</table>
+      {% endif %}
+      {% if cv.interests %}
+      <h2>{{ t.interests }}</h2>
+      {% for i in cv.interests %}<div class="skill">{{ i }}</div>{% endfor %}
+      {% endif %}
+    </aside>
+  </div>
+</div>
+</body>
+</html>

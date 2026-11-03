@@ -37,6 +37,7 @@ class CvContent(BaseModel):
     languages: list[Language] = []
     other: list[str] = []
     interests: list[str] = []
+    section_titles: dict[str, dict[str, str]] = {}
 
 
 def project_item(p: Project, text: str | None = None) -> ProjectItem:
@@ -63,4 +64,5 @@ def main_content(bank: Bank) -> CvContent:
         languages=bank.languages,
         other=[x.text for x in bank.extras if x.main and x.section == "other"],
         interests=[x.text for x in bank.extras if x.main and x.section == "interests"],
+        section_titles=bank.section_titles,
     )

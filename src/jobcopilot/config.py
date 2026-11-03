@@ -75,6 +75,14 @@ class Settings(BaseModel):
     def logs_dir(self) -> Path:
         return self.data_dir / "logs"
 
+    @property
+    def cv_path(self) -> Path:
+        return self.data_dir / "cv.yaml"
+
+    @property
+    def cvs_dir(self) -> Path:
+        return self.data_dir / "cvs"
+
 
 def _read_yaml(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
