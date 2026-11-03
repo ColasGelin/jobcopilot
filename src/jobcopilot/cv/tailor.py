@@ -65,7 +65,7 @@ class TailorError(Exception):
         self.violations = violations
 
 
-def _bank_for_prompt(bank: Bank) -> str:
+def bank_for_prompt(bank: Bank) -> str:
     data = bank.model_dump(exclude={"contact", "main_headline", "section_titles"})
     for g in data["skills"]:
         g.pop("main", None)
@@ -75,7 +75,7 @@ def _bank_for_prompt(bank: Bank) -> str:
 
 def _render(job: Job, evaluation: Evaluation | None, bank: Bank) -> str:
     values = {
-        "bank": _bank_for_prompt(bank),
+        "bank": bank_for_prompt(bank),
         "company": job.company,
         "title": job.title,
         "location": job.location or "not stated",
