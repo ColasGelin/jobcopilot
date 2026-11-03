@@ -1,0 +1,17 @@
+<!doctype html><html><body>
+<h1>AI Engineer at Acme</h1><p>We build agents.</p>
+<form id="app">
+  <label for="fname">First name</label><input id="fname" name="first_name" required>
+  <input type="email" name="email" aria-label="Email address">
+  <span id="ph">Phone number</span><input type="tel" name="phone" aria-labelledby="ph">
+  <div><div>LinkedIn URL</div><div><input type="url" name="linkedin"></div></div>
+  <label for="why">Why do you want to join?</label><textarea id="why" maxlength="500" required></textarea>
+  <label for="visa">Visa sponsorship</label><select id="visa"><option value="">Select…</option><option>Yes</option><option>No</option></select>
+  <fieldset><legend>Willing to relocate?</legend>
+    <label><input type="radio" name="reloc" value="y"> Yes</label><label><input type="radio" name="reloc" value="n"> No</label></fieldset>
+  <label><input type="checkbox" name="consent"> I agree to the privacy policy</label>
+  <label for="cv">Resume/CV</label><input type="file" id="cv" style="opacity:0;width:1px;height:1px">
+  <input type="hidden" name="token" value="x">
+  <input type="text" name="hp" style="display:none">
+  <button type="submit">Submit application</button>
+</form></body></html>
