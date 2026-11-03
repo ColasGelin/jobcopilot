@@ -1,0 +1,193 @@
+# Technology names the guard watches for in reworded CV text. A name found in the output must
+# already appear in its source item. The bank's own skill items are added automatically.
+# Languages
+Python
+TypeScript
+JavaScript
+SQL
+C
+C++
+C#
+OCaml
+Bash
+Go
+Golang
+Rust
+Java
+Kotlin
+Scala
+Swift
+Ruby
+PHP
+Elixir
+Haskell
+Julia
+MATLAB
+Perl
+Lua
+Dart
+Solidity
+# LLM and AI tooling
+LangChain
+LangGraph
+LangSmith
+LlamaIndex
+Haystack
+DSPy
+CrewAI
+AutoGen
+MCP
+RAG
+OpenAI
+GPT-4
+GPT-4o
+ChatGPT
+Claude
+Anthropic
+Gemini
+Mistral
+Llama
+Qwen
+DeepSeek
+Ollama
+vLLM
+llama.cpp
+Hugging Face
+Transformers
+LoRA
+QLoRA
+PEFT
+Unsloth
+Ragas
+promptfoo
+Whisper
+Bedrock
+Vertex AI
+SageMaker
+Azure OpenAI
+# ML and data
+PyTorch
+TensorFlow
+Keras
+JAX
+scikit-learn
+XGBoost
+LightGBM
+NumPy
+Pandas
+Polars
+SciPy
+OpenCV
+YOLO
+YOLOv8
+MNE
+Jupyter
+MLflow
+Kubeflow
+Airflow
+Spark
+PySpark
+Databricks
+Snowflake
+dbt
+Kafka
+Hadoop
+Tableau
+Power BI
+# Vector stores and databases
+Qdrant
+Milvus
+MilvusDB
+Pinecone
+Weaviate
+Chroma
+pgvector
+FAISS
+PostgreSQL
+Postgres
+MySQL
+MariaDB
+SQLite
+MongoDB
+Redis
+Elasticsearch
+OpenSearch
+Cassandra
+DynamoDB
+Neo4j
+ClickHouse
+BigQuery
+Supabase
+Firebase
+# Backend
+FastAPI
+Django
+DRF
+Flask
+Express
+Node.js
+NestJS
+Spring
+Spring Boot
+Rails
+Laravel
+Celery
+RabbitMQ
+GraphQL
+gRPC
+WebSockets
+Socket.io
+# Frontend and mobile
+React
+Next.js
+React Native
+Vue
+Nuxt
+Angular
+Svelte
+Tailwind
+Redux
+Zustand
+Ocsigen
+js_of_ocaml
+Flutter
+# DevOps and cloud
+Docker
+Kubernetes
+K3s
+K3d
+Helm
+Argo CD
+Terraform
+Ansible
+Vagrant
+Jenkins
+GitHub Actions
+GitLab CI
+CircleCI
+AWS
+GCP
+Google Cloud
+Azure
+Nginx
+Linux
+OpenShift
+# Observability and testing
+Prometheus
+Grafana
+Loki
+Datadog
+Sentry
+OpenTelemetry
+pytest
+Jest
+Playwright
+Cypress
+Selenium
+# Security
+SIEM
+Splunk
+MITRE ATT&CK
+NIS2
+ISO 27001
+SOC 2
