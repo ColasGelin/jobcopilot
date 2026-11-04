@@ -6,7 +6,7 @@ def raw(fields=(), text="", has_password=False, captcha=False):
     return {"fields": list(fields), "text": text, "has_password": has_password, "captcha": captcha, "form_count": 1}
 
 
-F = {"key": "q", "selector": "#q", "label": "Why us?", "kind": "textarea", "options": [], "required": True, "max_length": None, "description": ""}
+F = {"key": "q", "selector": "#q", "label": "Full name", "kind": "text", "options": [], "required": True, "max_length": None, "description": ""}
 
 
 def test_classify_signin_wins_over_fields():
@@ -35,3 +35,15 @@ def test_classify_fields_from_child_frame():
 def test_classify_main_frame_fields_have_empty_frame_and_text_is_capped():
     snap = classify([("https://a", raw([F], text="x" * 30_000))], "https://a")
     assert snap.fields[0].frame == "" and len(snap.page_text) == 20_000
+
+
+def test_comment_box_and_search_are_not_an_application_form():
+    # A Hacker News post: a reply textarea and a search box, nothing that asks for a candidate.
+    junk = [dict(F, key="text", label="robz75 1 day ago | parent | on: Ask HN: Who is hiring?", kind="textarea", required=False),
+            dict(F, key="q", label="Guidelines | FAQ | Search:", kind="text", required=False)]
+    assert classify([("https://news.ycombinator.com/item?id=1", raw(junk))], "https://x") == NeedsYou(reason="No application form found")
+
+
+def test_one_applicant_field_is_enough():
+    fields = [dict(F, key="e", label="Email", kind="email"), dict(F, key="m", label="Anything else?", kind="textarea")]
+    assert isinstance(classify([("https://a", raw(fields))], "https://a"), FormSnapshot)

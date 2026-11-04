@@ -22,6 +22,7 @@ class ApplicationProfile(BaseModel):
 
     first_name: str | None = None
     last_name: str | None = None
+    full_name: str | None = None  # defaults to "first last"
     email: str | None = None
     phone: str | None = None
     city: str | None = None
@@ -36,7 +37,10 @@ class ApplicationProfile(BaseModel):
     willing_to_relocate: str | None = None
 
     def values(self) -> dict[str, str]:
-        return {k: v for k, v in self.model_dump().items() if v and str(v).strip()}
+        data = self.model_dump()
+        if not data["full_name"] and data["first_name"] and data["last_name"]:
+            data["full_name"] = f"{data['first_name']} {data['last_name']}"
+        return {k: v for k, v in data.items() if v and str(v).strip()}
 
 
 class Profile(BaseModel):

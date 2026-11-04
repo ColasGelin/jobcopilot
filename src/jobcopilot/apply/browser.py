@@ -18,6 +18,10 @@ SIGN_IN = "Sign-in or account creation required"
 CAPTCHA = "CAPTCHA or bot check on the page"
 NO_FORM = "No application form found"
 
+# A page only holds an application form if some field asks for the candidate (a comment box or a search
+# field alone, as on a Hacker News post, does not count).
+_APPLICANT = re.compile(r"\b(?:name|e-?mail|phone|resume|cv|curriculum|linkedin|nombre|nom|prénom|correo|téléphone|teléfono)\b", re.I)
+
 _EXTRACT_JS = resources.files("jobcopilot.apply").joinpath("extract.js").read_text(encoding="utf-8")
 _APPLY = re.compile(rf"^\s*(?:{'|'.join(re.escape(a) for a in APPLY_LABELS)})\s*$", re.I)
 
@@ -33,6 +37,8 @@ def classify(frames: list[tuple[str, dict]], url: str) -> FormSnapshot | NeedsYo
     ]
     if not fields:
         return NeedsYou(reason=CAPTCHA if any(raw.get("captcha") for _, raw in frames) else NO_FORM)
+    if not any(f.kind in ("email", "tel", "file") or _APPLICANT.search(f.label) for f in fields):
+        return NeedsYou(reason=NO_FORM)
     text = "\n".join(raw.get("text") or "" for _, raw in frames if raw.get("text"))
     return FormSnapshot(url=url, page_text=text[:PAGE_TEXT_LIMIT], fields=fields)
 

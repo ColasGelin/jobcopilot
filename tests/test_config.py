@@ -50,3 +50,11 @@ def test_prepare_settings_defaults(tmp_path):
 
 def test_example_profile_has_application_block():
     assert load_profile(ROOT / "profile.example.yaml").application.values()["first_name"] == "Alex"
+
+
+def test_full_name_derived_from_first_and_last():
+    from jobcopilot.config import ApplicationProfile
+
+    assert ApplicationProfile(first_name="Alex", last_name="Martin").values()["full_name"] == "Alex Martin"
+    assert "full_name" not in ApplicationProfile(first_name="Alex").values()
+    assert ApplicationProfile(first_name="A", last_name="B", full_name="Alexandra B.").values()["full_name"] == "Alexandra B."
