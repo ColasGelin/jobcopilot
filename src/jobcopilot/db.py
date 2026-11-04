@@ -17,7 +17,7 @@ from jobcopilot.text import normalize
 FOLLOW_UP_AFTER = timedelta(days=5)
 STALE_COMMAND_AFTER = timedelta(minutes=10)
 STALE_PREP_AFTER = timedelta(minutes=15)  # an application still "reading"/"drafting" after this was interrupted  # a "taken" command the agent never finished (crash) is offered again
-NOT_TO_PREPARE = ("skipped", "rejected", "applied", "interview", "offer")
+NOT_TO_PREPARE = ("skipped", "rejected", "applied", "interview", "offer", "unavailable")
 _KEEP = object()
 PIPELINE_STATUSES = ("shortlisted", "applied", "interview", "offer", "rejected")
 

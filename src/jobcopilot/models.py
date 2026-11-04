@@ -7,7 +7,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-STATUSES = ("new", "shortlisted", "applied", "interview", "offer", "rejected", "skipped")
+STATUSES = ("new", "shortlisted", "applied", "interview", "offer", "rejected", "skipped", "unavailable")
 
 
 class Job(BaseModel):

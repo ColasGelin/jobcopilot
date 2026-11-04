@@ -16,7 +16,7 @@
   {% if e.gaps %}<p><b>Gaps:</b> {{ e.gaps }}</p>{% endif %}
   {% endif %}
   <div class="actions">
-    {% for s, label in [("shortlisted", "Shortlist"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skip")] %}
+    {% for s, label in [("shortlisted", "Shortlist"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skip"), ("unavailable", "Unavailable")] %}
       <button hx-post="/jobs/{{ m.job_id }}/status{% if compact %}?compact=1{% endif %}" hx-vals='{"status": "{{ s }}"}' hx-target="closest article" hx-swap="outerHTML"
               {% if m.status == s %}disabled{% endif %}>{{ label }}</button>
     {% endfor %}

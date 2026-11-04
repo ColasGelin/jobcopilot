@@ -259,3 +259,17 @@ def test_dashboard_has_its_own_tab_icon(db_path):
     assert '<link rel="icon" href="/static/favicon.svg"' in c.get("/").text
     icon = c.get("/static/favicon.svg")
     assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/svg+xml")
+
+
+def test_unavailable_button_marks_job(db_path):
+    from jobcopilot.db import DB
+
+    job = make_job(1)
+    seed(db_path, [(job, 80)])
+    c = client(db_path)
+    body = c.get("/").text
+    job_id = job.id
+    assert '"status": "unavailable"' in body and ">Unavailable<" in body
+    r = c.post(f"/jobs/{job_id}/status", data={"status": "unavailable"}, headers={"HX-Request": "true"})
+    assert r.status_code == 200 and "status-unavailable" in r.text
+    assert DB(db_path).status(job_id) == "unavailable"

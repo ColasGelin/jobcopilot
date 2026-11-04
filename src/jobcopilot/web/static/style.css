@@ -19,7 +19,7 @@ h2 { font-size: 16px; margin: 0; }
 h3 { font-size: 14px; margin: 14px 0 4px; display: flex; gap: 8px; align-items: center; }
 .day-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
-.card.status-skipped, .card.status-rejected { opacity: .55; }
+.card.status-skipped, .card.status-rejected, .card.status-unavailable { opacity: .55; }
 .card.follow-up { border-color: var(--good); box-shadow: inset 4px 0 0 var(--good); }
 .card-head { display: flex; gap: 12px; align-items: flex-start; }
 .card-head > div { flex: 1; }

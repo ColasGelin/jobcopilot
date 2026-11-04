@@ -93,3 +93,9 @@ def test_delete_jobs_removes_prepared_rows(db):
     db.queue_command(app, "fill", NOW)
     db.delete_jobs([job.id])
     assert db.get_prepared(app) is None and db.answers(app) == [] and db.take_next_command(NOW) is None
+
+
+def test_unavailable_jobs_are_not_prepared(db):
+    job = add_job(db, 1, 90)
+    db.set_status(job.id, "unavailable", NOW)
+    assert db.jobs_to_prepare(75, 10) == []
