@@ -274,3 +274,54 @@ def test_letter_sees_answers_and_answers_see_letter(env):
     db.update_prepared(app.id, NOW, status="needs_you", reason="re-read")
     p.prepare_job(jobs[0].id, NOW)
     assert "I built FastAPI services." in llm.calls[3][0]  # re-drafted answers carry the letter
+
+
+def page_job(url, text):
+    return make_job(99, url=url, description=text)
+
+
+def test_two_links_role_page_gives_description_application_page_gives_form(env):
+    _, db, *_, jobs = env
+    seen = []
+    p, _, _ = preparer(env, [TAILORED, DRAFT], read=lambda job: seen.append(job.url) or FORM)
+    p.fetch = lambda url: page_job(url, "Full role description " * 30)
+    app = p.use_links(jobs[0].id, "https://acme.com/apply/1", "https://acme.com/careers/ai-engineer", NOW)
+    assert app.status == "ready" and seen == ["https://acme.com/apply/1"]
+    assert db.form_url(jobs[0].id) == "https://acme.com/apply/1"
+    assert db.get_job(jobs[0].id).description.startswith("Full role description")
+
+
+def test_one_link_is_both_form_and_description_when_richer(env):
+    _, db, *_, jobs = env
+    db.set_description(jobs[0].id, "short HN comment")
+    seen = []
+    p, _, _ = preparer(env, [TAILORED, DRAFT], read=lambda job: seen.append(job.url) or FORM)
+    p.fetch = lambda url: page_job(url, "The real offer, much longer. " * 30)
+    p.use_links(jobs[0].id, "https://jobs.lever.co/co1/1", "", NOW)
+    assert seen == ["https://jobs.lever.co/co1/1"] and db.get_job(jobs[0].id).description.startswith("The real offer")
+
+
+def test_one_link_keeps_a_better_existing_description(env):
+    _, db, *_, jobs = env
+    db.set_description(jobs[0].id, "A long, good description. " * 40)
+    p, _, _ = preparer(env, [TAILORED, DRAFT])
+    p.fetch = lambda url: page_job(url, "Apply here: name, email.")
+    p.use_links(jobs[0].id, "https://acme.com/apply", "", NOW)
+    assert db.get_job(jobs[0].id).description.startswith("A long, good description.")
+
+
+def test_role_page_problem_does_not_stop_the_form(env):
+    _, db, *_, jobs = env
+    p, _, reads = preparer(env, [TAILORED, DRAFT])
+    p.fetch = lambda url: NeedsYou(reason="Page failed to load: 404")
+    app = p.use_links(jobs[0].id, "https://acme.com/apply", "https://acme.com/role", NOW)
+    assert app.status == "ready" and len(reads) == 1  # the reader got the application page's URL
+
+
+def test_new_links_reread_a_ready_application(env):
+    _, db, *_, jobs = env
+    p, llm, reads = preparer(env, [TAILORED, DRAFT, DRAFT])
+    p.fetch = lambda url: NeedsYou(reason="x")
+    p.prepare_job(jobs[0].id, NOW)
+    app = p.use_links(jobs[0].id, "https://jobs.lever.co/co1/apply", "", NOW)
+    assert len(reads) == 2 and app.status == "ready" and len(db.answers(app.id)) == 3

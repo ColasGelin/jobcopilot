@@ -92,6 +92,13 @@ class DB:
         if str(path) != ":memory:":
             self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(SCHEMA)
+        columns = {r[1] for r in self.conn.execute("PRAGMA table_info(jobs)")}
+        if "apply_url" not in columns:  # added after the first release: the application page the candidate gave
+            try:
+                self.conn.execute("ALTER TABLE jobs ADD COLUMN apply_url TEXT")
+                self.conn.commit()
+            except sqlite3.OperationalError:  # the other container added it first
+                pass
 
     # --- jobs ---------------------------------------------------------------
     def filter_new(self, jobs: list[Job]) -> list[Job]:
@@ -141,6 +148,24 @@ class DB:
         data["remote"] = bool(data["remote"])
         data["posted_at"] = _dt(data["posted_at"])
         return Job(**data)
+
+    def set_apply_url(self, job_id: str, url: str) -> None:
+        with self.conn:
+            self.conn.execute("UPDATE jobs SET apply_url = ? WHERE id = ?", (url.strip() or None, job_id))
+
+    def apply_url(self, job_id: str) -> str:
+        """The application page the candidate gave for this job, or ""."""
+        row = self.conn.execute("SELECT apply_url FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        return (row[0] or "") if row else ""
+
+    def form_url(self, job_id: str) -> str | None:
+        """Where the application form is: the link the candidate gave, else the job's own URL."""
+        row = self.conn.execute("SELECT coalesce(apply_url, url) FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        return row[0] if row else None
+
+    def set_description(self, job_id: str, description: str) -> None:
+        with self.conn:
+            self.conn.execute("UPDATE jobs SET description = ? WHERE id = ?", (description, job_id))
 
     def known_urls(self) -> set[str]:
         return {r[0] for r in self.conn.execute("SELECT url FROM jobs")}

@@ -74,3 +74,6 @@ button.check[aria-pressed="true"] { background: var(--strong); border-color: var
 .add-job p { flex-basis: 100%; margin: 0; }
 .cover-block { margin: 28px 0; }
 .cover-block textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; }
+.prep-block details.links { flex-basis: 100%; }
+.prep-block details.links form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.prep-block details.links input { flex: 1 1 240px; font: inherit; padding: 4px 6px; }

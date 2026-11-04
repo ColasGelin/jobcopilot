@@ -99,3 +99,28 @@ def test_unavailable_jobs_are_not_prepared(db):
     job = add_job(db, 1, 90)
     db.set_status(job.id, "unavailable", NOW)
     assert db.jobs_to_prepare(75, 10) == []
+
+
+def test_apply_url_and_description_per_job(db):
+    job = add_job(db, 1)
+    assert db.form_url(job.id) == job.url
+    db.set_apply_url(job.id, "https://jobs.lever.co/acme/123")
+    assert db.form_url(job.id) == "https://jobs.lever.co/acme/123"
+    db.set_apply_url(job.id, "")
+    assert db.form_url(job.id) == job.url and db.form_url("nope") is None
+    db.set_description(job.id, "The full offer text.")
+    assert db.get_job(job.id).description == "The full offer text."
+
+
+def test_apply_url_column_added_to_existing_db(tmp_path):
+    import sqlite3
+    path = tmp_path / "old.db"
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE jobs (id TEXT PRIMARY KEY, url TEXT UNIQUE NOT NULL, source TEXT, company TEXT, title TEXT,"
+                " company_key TEXT, title_key TEXT, location TEXT, remote INTEGER, salary_text TEXT, description TEXT,"
+                " posted_at TEXT, first_seen_at TEXT)")
+    old.commit(); old.close()
+    db = DB(path)
+    job = add_job(db, 1)
+    db.set_apply_url(job.id, "https://x/apply")
+    assert db.form_url(job.id) == "https://x/apply"

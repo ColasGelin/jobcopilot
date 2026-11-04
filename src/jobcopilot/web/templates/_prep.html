@@ -44,5 +44,15 @@
       {% endif %}
     {% endif %}
   {% endif %}
+  <details class="links"{% if page %} open{% endif %}>
+    <summary>Links{% if apply_url(job_id) %} · application page set{% endif %}</summary>
+    <form hx-post="/jobs/{{ job_id }}/links" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML"
+          hx-indicator="#links-ind-{{ job_id }}" hx-disabled-elt="find button">
+      <input type="url" name="apply_url" placeholder="Application page (the form)" value="{{ apply_url(job_id) }}" required>
+      <input type="url" name="role_url" placeholder="Role page, only if it's a different page">
+      <button>Use these links</button>
+      <span class="htmx-indicator muted-text" id="links-ind-{{ job_id }}">Reading the pages and preparing… (1–2 min)</span>
+    </form>
+  </details>
   {% if errors %}<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
 </div>

@@ -183,3 +183,48 @@ def test_application_page_cv_link_downloads(home):
     db.save_tailored_cv(job.id, main_content(load_bank(tmp / "cv.yaml")), 1, "m", "v")
     page = client(tmp)[0].get(f"/jobs/{job.id}/application").text
     assert f'href="/jobs/{job.id}/cv.pdf"' in page and f'href="/jobs/{job.id}/cv"' not in page
+
+
+class LinkPreparer(FakePreparer):
+    def use_links(self, job_id, apply_url, role_url, now):
+        self.calls.append((job_id, apply_url, role_url))
+        db = DB(self.path)
+        db.set_apply_url(job_id, apply_url)
+        return db.get_prepared(seed_app(db, job_id))
+
+
+def link_client(tmp):
+    fake = LinkPreparer(tmp / "jobs.db")
+    app = create_app(tmp / "jobs.db", clock=lambda: NOW, cv_path=tmp / "cv.yaml", cvs_dir=tmp / "cvs", preparer_factory=lambda: fake)
+    return TestClient(app, base_url="http://localhost", headers={"HX-Request": "true"}), fake
+
+
+def test_links_form_on_card_and_page(home):
+    tmp, job, db = home
+    c, fake = link_client(tmp)
+    assert f'hx-post="/jobs/{job.id}/links"' in c.get("/").text
+    r = c.post(f"/jobs/{job.id}/links", data={"apply_url": "https://jobs.lever.co/acme/1", "role_url": "https://acme.com/role"})
+    assert r.status_code == 200 and "Application ready" in r.text
+    assert fake.calls == [(job.id, "https://jobs.lever.co/acme/1", "https://acme.com/role")]
+    page = c.get(f"/jobs/{job.id}/application").text
+    assert f'hx-post="/jobs/{job.id}/links"' in page and "https://jobs.lever.co/acme/1" in page
+
+
+def test_links_validation(home):
+    tmp, job, db = home
+    c, fake = link_client(tmp)
+    assert "full link" in c.post(f"/jobs/{job.id}/links", data={"apply_url": "lever", "role_url": ""}).text
+    assert "full link" in c.post(f"/jobs/{job.id}/links", data={"apply_url": "https://ok", "role_url": "careers"}).text
+    assert fake.calls == []
+    assert c.post(f"/jobs/{job.id}/links", data={"apply_url": "https://x"}, headers={"HX-Request": ""}).status_code == 403
+
+
+def test_agent_opens_the_given_link(home):
+    tmp, job, db = home
+    app = seed_app(db, job.id)
+    db.set_apply_url(job.id, "https://jobs.lever.co/acme/1/apply")
+    db.queue_command(app, "fill", NOW)
+    c, _ = client(tmp)
+    agent = {"X-Jobcopilot-Agent": "1"}
+    assert c.get("/api/agent/next", headers=agent).json()["url"] == "https://jobs.lever.co/acme/1/apply"
+    assert c.get(f"/api/applications/{app}", headers=agent).json()["job_url"] == "https://jobs.lever.co/acme/1/apply"

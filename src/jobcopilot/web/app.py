@@ -99,6 +99,7 @@ def create_app(
     templates.env.globals["cv_info"] = lambda job_id: db().latest_tailored_cv(job_id)
     templates.env.globals["prep_info"] = lambda job_id: db().prepared_for_job(job_id)
     templates.env.globals["command_info"] = lambda app_id: db().latest_command(app_id)
+    templates.env.globals["apply_url"] = lambda job_id: db().apply_url(job_id)
 
     @app.get("/", response_class=HTMLResponse)
     def today(request: Request, day: str | None = None, all: bool = False):
@@ -402,6 +403,26 @@ def create_app(
             return problem(error)
         return Response(status_code=200, headers={"HX-Redirect": f"/jobs/{job_id}/application"})
 
+    @app.post("/jobs/{job_id}/links", response_class=HTMLResponse)
+    def use_links(request: Request, job_id: str, apply_url: str = Form(""), role_url: str = Form("")):
+        require_htmx(request)
+        job_or_404(job_id)
+        apply_url, role_url = apply_url.strip(), role_url.strip()
+        is_link = lambda u: u.lower().startswith(("http://", "https://"))
+        if not is_link(apply_url) or (role_url and not is_link(role_url)):
+            return prep_fragment(request, job_id, ["Paste the full link (starting with https://)."])
+        if preparer_factory is None:
+            return prep_fragment(request, job_id, ["Preparing is not configured."])
+        if not app.state.prepare_lock.acquire(blocking=False):
+            return prep_fragment(request, job_id, ["Already preparing an application; wait for it to finish."], 409)
+        try:
+            preparer_factory().use_links(job_id, apply_url, role_url, clock())
+        except Exception as e:
+            return prep_fragment(request, job_id, [f"Preparing from those links failed: {e}"])
+        finally:
+            app.state.prepare_lock.release()
+        return prep_fragment(request, job_id)
+
     def job_or_404(job_id: str):
         job = db().get_job(job_id)
         if job is None:
@@ -470,8 +491,8 @@ def create_app(
         cmd = store.take_next_command(clock())
         if cmd is None:
             return Response(status_code=204)
-        job = store.get_job(store.get_prepared(cmd.app_id).job_id)
-        return {"id": cmd.id, "app_id": cmd.app_id, "action": cmd.action, "url": job.url}
+        job_id = store.get_prepared(cmd.app_id).job_id
+        return {"id": cmd.id, "app_id": cmd.app_id, "action": cmd.action, "url": store.form_url(job_id)}
 
     @api.get("/agent/commands/{cmd_id}")
     def agent_command(cmd_id: int):
@@ -511,7 +532,7 @@ def create_app(
             if a.kind == "leave" or (a.kind != "cv" and not a.final.strip()):
                 continue
             payload.append(field.model_dump() | {"value": a.final, "answer_kind": a.kind})
-        return {"job_url": store.get_job(prepared.job_id).url, "fields": payload}
+        return {"job_url": store.form_url(prepared.job_id), "fields": payload}
 
     @api.get("/applications/{app_id}/cv.pdf")
     def agent_cv(app_id: int):

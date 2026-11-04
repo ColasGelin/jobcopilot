@@ -66,7 +66,7 @@ class Preparer:
         else:
             app_id = self.db.create_prepared(job_id, "reading", now)
         try:
-            result = self.read(job)
+            result = self.read(job.model_copy(update={"url": self.db.form_url(job_id) or job.url}))
             if isinstance(result, NeedsYou):
                 self.db.update_prepared(app_id, now, status="needs_you", reason=result.reason)
                 return self.db.get_prepared(app_id)
@@ -84,6 +84,23 @@ class Preparer:
     def _retryable(app: PreparedApp, now: datetime) -> bool:
         stuck = app.status in ("reading", "drafting") and app.updated_at < now - STALE_PREP_AFTER
         return app.status == "needs_you" or stuck
+
+    def use_links(self, job_id: str, apply_url: str, role_url: str, now: datetime) -> PreparedApp:
+        """Links the candidate found: the application page (the form) and, when the offer is on another page,
+        the role page (its text becomes the description). One link serves as both, and its text replaces the
+        description only when richer. Then the application is prepared again from them."""
+        job = self.db.get_job(job_id)
+        if job is None:
+            raise ValueError(f"unknown job {job_id!r}")
+        self.db.set_apply_url(job_id, apply_url)
+        page = self.fetch(role_url or apply_url) if self.fetch else None
+        if page is not None and not isinstance(page, NeedsYou) and page.description.strip():
+            if role_url or len(page.description) > len(job.description):
+                self.db.set_description(job_id, page.description)
+        existing = self.db.prepared_for_job(job_id)
+        if existing:
+            self.db.update_prepared(existing.id, now, status="needs_you", reason="Re-reading from the links you gave")
+        return self.prepare_job(job_id, now)
 
     def write_cover(self, job_id: str, now: datetime) -> None:
         """Draft (or redo) the job's cover letter in the candidate's voice; stored with any fact-check problems."""
