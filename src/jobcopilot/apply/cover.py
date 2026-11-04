@@ -97,5 +97,5 @@ def is_cover_field(label: str) -> bool:
     return bool(_COVER_FIELD.search(label))
 
 
-def cover_filename(name: str) -> str:
-    return download_name(name).replace("-CV.pdf", "-Cover-Letter.pdf").replace("CV.pdf", "Cover-Letter.pdf")
+def cover_filename(name: str, company: str = "") -> str:
+    return download_name(name, company, kind="Cover-Letter")

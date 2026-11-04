@@ -105,3 +105,11 @@ def test_download_name_uses_candidate_name():
     assert download_name("Alex Martin") == "Alex-Martin-CV.pdf"
     assert download_name("Zoë  O'Brien-Núñez") == "Zoe-O-Brien-Nunez-CV.pdf"
     assert download_name("  ") == "CV.pdf"
+
+
+def test_download_name_with_company():
+    from jobcopilot.cv.tailor import download_name
+
+    assert download_name("Alex Martin", "Acme") == "Alex-Martin-CV-Acme.pdf"
+    assert download_name("Alex Martin", "Ünïcorn AI / Labs, S.L.") == "Alex-Martin-CV-Unicorn-AI-Labs-S-L.pdf"
+    assert download_name("Alex Martin", "  ") == "Alex-Martin-CV.pdf"

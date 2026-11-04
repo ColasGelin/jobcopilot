@@ -108,7 +108,7 @@ def test_cv_download_name(env):
     assert c.get(f"/api/applications/{app}/cv.pdf", headers=AGENT).status_code == 404  # no tailored CV yet
     c.post(f"/jobs/{job.id}/cv", headers={"HX-Request": "true"})
     r = c.get(f"/api/applications/{app}/cv.pdf", headers=AGENT)
-    assert r.status_code == 200 and r.content[:4] == b"%PDF" and "Alex-Martin-CV.pdf" in r.headers["content-disposition"]
+    assert r.status_code == 200 and r.content[:4] == b"%PDF" and "Alex-Martin-CV-Acme.pdf" in r.headers["content-disposition"]
 
 
 def test_form_ingest_calls_preparer(env):

@@ -88,7 +88,7 @@ def test_cover_letter_write_edit_and_pdf(env):
     assert c.post(f"/jobs/{job.id}/cover/final", data={"final": "Dear Acme,\n\nMine."}, headers=HX).status_code == 204
     assert db.cover_letter(job.id)["final"] == "Dear Acme,\n\nMine."
     pdf = c.get(f"/jobs/{job.id}/cover.pdf")
-    assert pdf.content[:4] == b"%PDF" and "Alex-Martin-Cover-Letter.pdf" in pdf.headers["content-disposition"]
+    assert pdf.content[:4] == b"%PDF" and "Alex-Martin-Cover-Letter-Acme.pdf" in pdf.headers["content-disposition"]
     assert c.post(f"/jobs/{job.id}/cover").status_code == 403
     assert c.post("/jobs/nope/cover", headers=HX).status_code == 404
 
@@ -100,7 +100,7 @@ def test_agent_attaches_cover_letter_only_when_written(env):
     db.save_cover_letter(job.id, "Dear team", [], "m", "v", NOW)
     assert keys() == {"cv": "cv", "cl": "cover"}
     pdf = c.get(f"/api/applications/{app}/cover.pdf", headers=AGENT)
-    assert pdf.content[:4] == b"%PDF" and "Cover-Letter.pdf" in pdf.headers["content-disposition"]
+    assert pdf.content[:4] == b"%PDF" and "Cover-Letter-Acme.pdf" in pdf.headers["content-disposition"]
 
 
 def test_cover_upload_row_explains_attachment(env):

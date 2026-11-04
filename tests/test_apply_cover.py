@@ -69,6 +69,7 @@ def test_pdf_and_filename(bank):
     pdf = render_cover(bank.contact, make_job(1, company="Acme", title="LLM Engineer"), GOOD, date(2026, 11, 4))
     assert pdf[:4] == b"%PDF"
     assert cover_filename("Alex Martin") == "Alex-Martin-Cover-Letter.pdf"
+    assert cover_filename("Alex Martin", "Acme") == "Alex-Martin-Cover-Letter-Acme.pdf"
 
 
 def test_prompt_asks_why_this_company_and_role(bank):

@@ -203,8 +203,8 @@ def create_app(
         return templates.TemplateResponse(request, "_company.html", {"r": company_row(by_name[name], store.company_checks())})
 
     # --- CV ---------------------------------------------------------------------
-    def pdf_response(pdf: bytes, content: CvContent) -> Response:
-        filename = download_name(content.contact.name)
+    def pdf_response(pdf: bytes, content: CvContent, company: str = "") -> Response:
+        filename = download_name(content.contact.name, company)
         return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     @app.get("/cv", response_class=HTMLResponse)
@@ -291,7 +291,7 @@ def create_app(
         job, content = tailored_or_404(job_id)
         path = cvs_dir / cv_filename(job) if cvs_dir is not None else None
         pdf = path.read_bytes() if path is not None and path.exists() else render_pdf(content).pdf
-        return pdf_response(pdf, content)
+        return pdf_response(pdf, content, job.company)
 
     # --- prepared applications --------------------------------------------------
     def prep_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
@@ -440,7 +440,7 @@ def create_app(
         if letter is None or bank is None:
             raise HTTPException(404, error or "no cover letter for this job")
         pdf = render_cover(bank.contact, job, letter["final"], clock().date())
-        name = cover_filename(bank.contact.name)
+        name = cover_filename(bank.contact.name, job.company)
         return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     @app.get("/jobs/{job_id}/cover.pdf")

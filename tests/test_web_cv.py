@@ -202,7 +202,7 @@ def test_pdf_downloads_named_after_candidate(home):
     c, _, _ = client(tmp, [GOOD])
     assert c.get("/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV.pdf"'
     c.post(f"/jobs/{job.id}/cv")
-    assert c.get(f"/jobs/{job.id}/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV.pdf"'
+    assert c.get(f"/jobs/{job.id}/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV-Acme.pdf"'
 
 
 def test_cv_links_download_instead_of_opening(home):

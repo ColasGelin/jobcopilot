@@ -148,8 +148,10 @@ def cv_filename(job: Job) -> str:
     return f"{job.id}-{slug}.pdf"
 
 
-def download_name(name: str) -> str:
-    """What the recruiter sees: "First-Last-CV.pdf", never a job id or company."""
-    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    parts = re.findall(r"[A-Za-z0-9]+", ascii_name)
-    return "-".join(parts + ["CV"]) + ".pdf"
+def _ascii_parts(text: str) -> list[str]:
+    return re.findall(r"[A-Za-z0-9]+", unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode())
+
+
+def download_name(name: str, company: str = "", kind: str = "CV") -> str:
+    """What the recruiter sees: "First-Last-CV.pdf", or "First-Last-CV-Company.pdf" for a CV made for that company."""
+    return "-".join(_ascii_parts(name) + [kind] + _ascii_parts(company)) + ".pdf"
