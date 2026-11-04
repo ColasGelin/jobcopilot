@@ -22,7 +22,7 @@ def plist_xml(uv: str, repo: Path, dashboard: str) -> str:
         "KeepAlive": True,
         "StandardOutPath": str(LOG),
         "StandardErrorPath": str(LOG),
-        "EnvironmentVariables": {"PATH": ":".join(path_dirs), "HOME": str(Path.home())},
+        "EnvironmentVariables": {"PATH": ":".join(path_dirs), "HOME": str(Path.home()), "PYTHONUNBUFFERED": "1"},
     }
     return plistlib.dumps(plist).decode()
 

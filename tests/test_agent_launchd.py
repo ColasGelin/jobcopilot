@@ -12,3 +12,4 @@ def test_plist_runs_agent_with_dashboard():
     assert "--extra" in args and "browser" in args and "/repo" in args
     assert data["RunAtLoad"] is True and data["KeepAlive"] is True and data["WorkingDirectory"] == "/repo"
     assert data["StandardOutPath"].endswith(".jobcopilot/agent.log")
+    assert data["EnvironmentVariables"]["PYTHONUNBUFFERED"] == "1"  # log lines show up as they happen
