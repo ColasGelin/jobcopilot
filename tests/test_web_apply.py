@@ -173,3 +173,13 @@ def test_read_next_step_offered_after_fill_and_try_again_when_stuck(home):
     assert "Read next step" in page and f'hx-post="/applications/{app}/open"' in page
     db.update_prepared(app, NOW, status="reading")
     assert "Try again" in c.get(f"/jobs/{job.id}/application").text
+
+
+def test_application_page_cv_link_downloads(home):
+    tmp, job, db = home
+    seed_app(db, job.id)
+    from jobcopilot.cv.content import main_content
+    from jobcopilot.cv.bank import load_bank
+    db.save_tailored_cv(job.id, main_content(load_bank(tmp / "cv.yaml")), 1, "m", "v")
+    page = client(tmp)[0].get(f"/jobs/{job.id}/application").text
+    assert f'href="/jobs/{job.id}/cv.pdf"' in page and f'href="/jobs/{job.id}/cv"' not in page

@@ -203,3 +203,11 @@ def test_pdf_downloads_named_after_candidate(home):
     assert c.get("/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV.pdf"'
     c.post(f"/jobs/{job.id}/cv")
     assert c.get(f"/jobs/{job.id}/cv.pdf").headers["content-disposition"] == 'attachment; filename="Alex-Martin-CV.pdf"'
+
+
+def test_cv_links_download_instead_of_opening(home):
+    tmp, job = home
+    c, _, _ = client(tmp, [GOOD])
+    fragment = c.post(f"/jobs/{job.id}/cv").text
+    assert f'href="/jobs/{job.id}/cv.pdf"' in fragment and f'href="/jobs/{job.id}/cv"' not in fragment
+    assert c.get(f"/jobs/{job.id}/cv.pdf").headers["content-disposition"].startswith("attachment")
