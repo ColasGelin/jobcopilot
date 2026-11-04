@@ -27,6 +27,9 @@ class FakeAPI:
     def download_cv(self, app_id, dest):
         return dest / "CV.pdf"
 
+    def download_cover(self, app_id, dest):
+        return dest / "Cover-Letter.pdf"
+
     def post_form(self, app_id, snap):
         self.forms.append((app_id, snap))
 
@@ -57,7 +60,7 @@ def opened():
 def test_fill_command_fills_and_reports_done(monkeypatch, opened):
     pages, open_page = opened
     calls = []
-    monkeypatch.setattr(loop, "fill_fields", lambda page, fields, cv: calls.append((page, fields, cv)) or FillResult(["k"], [{"key": "x", "label": "X", "why": "not found"}]))
+    monkeypatch.setattr(loop, "fill_fields", lambda page, fields, cv, cover: calls.append((page, fields, cv, cover)) or FillResult(["k"], [{"key": "x", "label": "X", "why": "not found"}]))
     monkeypatch.setattr(loop, "reveal_form", lambda page, fields: None)
     api = FakeAPI([{"id": 1, "app_id": 7, "action": "fill", "url": "https://jobs/1"}])
     agent = loop.Agent(api, open_page)
@@ -85,7 +88,7 @@ def test_read_command_waits_then_reads_on_retake(monkeypatch, opened):
 def test_fill_reuses_the_window_of_a_read(monkeypatch, opened):
     pages, open_page = opened
     monkeypatch.setattr(loop, "read_page", lambda page, url, click_apply=True: SNAP)
-    monkeypatch.setattr(loop, "fill_fields", lambda page, fields, cv: FillResult(["k"], []))
+    monkeypatch.setattr(loop, "fill_fields", lambda page, fields, cv, cover: FillResult(["k"], []))
     monkeypatch.setattr(loop, "reveal_form", lambda page, fields: pytest.fail("must not reload a page the candidate signed in on"))
     api = FakeAPI([{"id": 1, "app_id": 7, "action": "read", "url": "https://jobs/1"},
                    {"id": 1, "app_id": 7, "action": "read", "url": "https://jobs/1"},
@@ -156,3 +159,17 @@ def test_run_forever_survives_other_errors(opened):
     with pytest.raises(Stop):
         loop.Agent(api, open_page, sleep=sleep, log=logs.append).run_forever()
     assert sleeps == [30, 3] and any("HTTP 500" in l for l in logs)
+
+
+def test_fill_downloads_cover_letter_only_when_asked(monkeypatch, opened):
+    _, open_page = opened
+    calls = []
+    monkeypatch.setattr(loop, "fill_fields", lambda page, fields, cv, cover: calls.append((cv, cover)) or FillResult([], []))
+    monkeypatch.setattr(loop, "reveal_form", lambda page, fields: None)
+    api = FakeAPI([{"id": 1, "app_id": 7, "action": "fill", "url": "https://jobs/1"}])
+    loop.Agent(api, open_page).step()
+    assert calls[0][1] is None
+    api = FakeAPI([{"id": 1, "app_id": 8, "action": "fill", "url": "https://jobs/1"}],
+                  fields=[{"key": "cl", "answer_kind": "cover", "value": "Cover letter"}])
+    loop.Agent(api, open_page).step()
+    assert calls[1][0] is None and calls[1][1].name == "Cover-Letter.pdf"

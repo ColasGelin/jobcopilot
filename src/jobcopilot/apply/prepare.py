@@ -28,6 +28,29 @@ class Preparer:
     llm: LLMClient
     read: Callable[[Job], FormSnapshot | NeedsYou]
     bank_loader: Callable[[], Bank]
+    fetch: Callable[[str], Job | NeedsYou] | None = None  # a job from a pasted link (apply/fetch.py)
+
+    def add_job(self, url: str, now: datetime) -> tuple[str | None, str | None]:
+        """A job from a link the candidate pasted: stored, scored and prepared whatever its score.
+        Returns (job id, None), or (None, why it could not be added)."""
+        from jobcopilot.scoring import score_jobs
+
+        known = self.db.get_job(Job(url=url.strip(), source="manual", company="", title="").id)
+        if known is not None:
+            self.prepare_job(known.id, now)
+            return known.id, None
+        job = self.fetch(url) if self.fetch else NeedsYou(reason="Adding jobs by link is not configured.")
+        if isinstance(job, NeedsYou):
+            return None, job.reason
+        self.db.insert_jobs([job], now)
+        try:
+            evaluations, _ = score_jobs([job], self.profile, self.llm, self.settings.llm.score_model)
+            for e in evaluations:
+                self.db.save_evaluation(e)
+        except LLMError as e:  # unscored is fine: the candidate chose this job
+            log.warning("scoring %s failed: %s", job.id, e)
+        self.prepare_job(job.id, now)
+        return job.id, None
 
     def prepare_job(self, job_id: str, now: datetime) -> PreparedApp:
         """Prepare one job. An application that exists is returned as it is, unless it needs the candidate (then it is read again)."""
@@ -61,6 +84,18 @@ class Preparer:
     def _retryable(app: PreparedApp, now: datetime) -> bool:
         stuck = app.status in ("reading", "drafting") and app.updated_at < now - STALE_PREP_AFTER
         return app.status == "needs_you" or stuck
+
+    def write_cover(self, job_id: str, now: datetime) -> None:
+        """Draft (or redo) the job's cover letter in the candidate's voice; stored with any fact-check problems."""
+        from jobcopilot.apply.cover import COVER_PROMPT_VERSION, write_cover_letter
+
+        job = self.db.get_job(job_id)
+        if job is None:
+            raise ValueError(f"unknown job {job_id!r}")
+        voice = load_voice(self.settings.voice_dir, self.db.voice_examples())
+        model = self.settings.llm.draft_model
+        text, problems = write_cover_letter(job, self.bank_loader(), self.profile.application, voice, self.llm, model)
+        self.db.save_cover_letter(job_id, text, problems, model, COVER_PROMPT_VERSION, now)
 
     def ingest(self, app_id: int, form: FormSnapshot, now: datetime) -> PreparedApp:
         """A form step read on the Mac (after a sign-in or a "Next"): add it as the next step and draft it."""

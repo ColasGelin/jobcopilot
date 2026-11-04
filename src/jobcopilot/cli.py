@@ -28,14 +28,16 @@ def main(ctx: typer.Context, home: Path = typer.Option(Path.cwd(), help="Folder 
 
 
 def make_preparer(settings, profile, db, llm, client):
+    from jobcopilot.apply.fetch import fetch_job
     from jobcopilot.apply.prepare import Preparer
-    from jobcopilot.apply.reader import read_form
+    from jobcopilot.apply.reader import page_text_in_browser, read_form
     from jobcopilot.cv.bank import load_bank
 
     return Preparer(
         db=db, settings=settings, profile=profile, llm=llm,
         read=lambda job: read_form(job.url, job.company, settings.watchlist, client),
         bank_loader=lambda: load_bank(settings.cv_path),
+        fetch=lambda url: fetch_job(url, settings.watchlist, client, llm, settings.llm.score_model, page_text_in_browser),
     )
 
 

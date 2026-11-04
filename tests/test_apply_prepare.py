@@ -228,3 +228,38 @@ def test_ingest_claude_down_keeps_ready_app(env):
         p.ingest(app.id, step, NOW)
     after = db.get_prepared(app.id)
     assert after.status == "ready" and len(after.form.fields) == 3 and len(db.answers(app.id)) == 3
+
+
+def test_add_job_by_link_scores_and_prepares(env):
+    _, db, *_ = env
+    job = make_job(9, company="Linked", url="https://acme.com/careers/9")
+    score = {"results": [{"job_id": job.id, "score": 55, "fit_reasons": "ok", "gaps": "none"}]}
+    p, llm, reads = preparer(env, [score, TAILORED, DRAFT])
+    p.fetch = lambda url: job
+    job_id, error = p.add_job("https://acme.com/careers/9", NOW)
+    assert (job_id, error) == (job.id, None)
+    assert db.get_job(job.id).company == "Linked" and db.match(job.id).evaluation.score == 55
+    assert db.prepared_for_job(job.id).status == "ready" and reads == [job.id]  # prepared even below min_score
+
+
+def test_add_job_known_link_reuses_it(env):
+    _, db, *_, jobs = env
+    p, llm, _ = preparer(env, [TAILORED, DRAFT])
+    p.fetch = lambda url: pytest.fail("known link must not be fetched again")
+    assert p.add_job(jobs[0].url, NOW) == (jobs[0].id, None)
+
+
+def test_add_job_fetch_problem_reported(env):
+    _, db, *_ = env
+    p, llm, _ = preparer(env, [])
+    p.fetch = lambda url: NeedsYou(reason="Page failed to load: 404")
+    assert p.add_job("https://acme.com/x", NOW) == (None, "Page failed to load: 404")
+
+
+def test_add_job_scoring_failure_still_prepares(env):
+    _, db, *_ = env
+    job = make_job(9, company="Linked", url="https://acme.com/careers/9")
+    p, llm, _ = preparer(env, [LLMError("x"), LLMError("x"), TAILORED, DRAFT])  # scoring retries once
+    p.fetch = lambda url: job
+    job_id, error = p.add_job(job.url, NOW)
+    assert error is None and db.prepared_for_job(job_id).status == "ready"

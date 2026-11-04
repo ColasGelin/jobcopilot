@@ -39,11 +39,17 @@ class AgentAPI:
         return response.json()
 
     def download_cv(self, app_id: int, dest_dir: Path) -> Path | None:
-        response = self._request("GET", f"/api/applications/{app_id}/cv.pdf", timeout=120)
+        return self._download(f"/api/applications/{app_id}/cv.pdf", dest_dir, "CV.pdf")
+
+    def download_cover(self, app_id: int, dest_dir: Path) -> Path | None:
+        return self._download(f"/api/applications/{app_id}/cover.pdf", dest_dir, "Cover-Letter.pdf")
+
+    def _download(self, path: str, dest_dir: Path, default: str) -> Path | None:
+        response = self._request("GET", path, timeout=120)
         if response.status_code == 404:
             return None
         m = re.search(r'filename="([^"/\\]+)"', response.headers.get("content-disposition", ""))
-        path = dest_dir / (m.group(1) if m else "CV.pdf")
+        path = dest_dir / (m.group(1) if m else default)
         path.write_bytes(response.content)
         return path
 

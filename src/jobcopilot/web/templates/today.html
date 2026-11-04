@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+  {% with url = "", error = None %}{% include "_add.html" %}{% endwith %}
   {% if notice %}<p class="empty">{{ notice }}</p>{% endif %}
   {% if day %}
     <div class="day-nav">

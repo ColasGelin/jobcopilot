@@ -17,3 +17,11 @@ def test_read_in_browser_headless():
         pytest.skip("Chromium not installed")
     assert isinstance(snap, FormSnapshot) and len(snap.fields) == 9
     assert read_in_browser((FORMS / "missing.html").as_uri()).reason.startswith("Page failed to load")
+
+
+def test_page_text_in_browser():
+    from jobcopilot.apply.reader import page_text_in_browser
+
+    title, text = page_text_in_browser((FORMS / "plain.html").as_uri())
+    assert "We build agents." in text and "AI Engineer at Acme" in text
+    assert page_text_in_browser((FORMS / "missing.html").as_uri()).reason.startswith("Page failed to load")

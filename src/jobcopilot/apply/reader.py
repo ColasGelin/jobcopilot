@@ -40,6 +40,30 @@ def read_in_browser(url: str) -> FormSnapshot | NeedsYou:
             browser.close()
 
 
+def page_text_in_browser(url: str) -> tuple[str, str] | NeedsYou:
+    """(title, visible text) of a job page, for a link the candidate pasted."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return NeedsYou(reason=NO_BROWSER)
+    from jobcopilot.apply.browser import LOAD_TIMEOUT_MS, _settle
+
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception as e:
+            return NeedsYou(reason=f"{NO_BROWSER}: {str(e).splitlines()[0][:150]}")
+        try:
+            page = browser.new_page()
+            page.goto(url, timeout=LOAD_TIMEOUT_MS, wait_until="domcontentloaded")
+            _settle(page)
+            return page.title(), page.inner_text("body")
+        except Exception as e:
+            return NeedsYou(reason=f"Page failed to load: {str(e).splitlines()[0][:200]}")
+        finally:
+            browser.close()
+
+
 def read_form(url: str, company: str, watchlist: list[WatchlistEntry], http: httpx.Client) -> FormSnapshot | NeedsYou:
     if not url.lower().startswith(("http://", "https://")):
         return NeedsYou(reason=f"Not a web page: {url[:100]}")

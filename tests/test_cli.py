@@ -187,3 +187,13 @@ def test_cli_agent_install_uninstall_and_run(monkeypatch, tmp_path):
     assert RUNNER.invoke(cli.app, ["agent", "--uninstall"]).exit_code == 0
     assert RUNNER.invoke(cli.app, ["agent", "--dashboard", "http://localhost:9000"]).exit_code == 0
     assert calls == [("install", "http://localhost:8077"), ("uninstall",), ("run", "http://localhost:9000")]
+
+
+def test_preparer_can_add_jobs_by_link(monkeypatch, tmp_path):
+    captured = {}
+    monkeypatch.setattr(cli.uvicorn, "run", lambda app, host, port: None)
+    import jobcopilot.web as web
+    real = web.create_app
+    monkeypatch.setattr(web, "create_app", lambda db_path, **kw: captured.update(kw) or real(db_path, **kw))
+    RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "serve"])
+    assert captured["preparer_factory"]().fetch is not None

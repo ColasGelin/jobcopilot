@@ -59,6 +59,10 @@ CREATE TABLE IF NOT EXISTS agent_commands (
     id INTEGER PRIMARY KEY, app_id INTEGER NOT NULL REFERENCES prepared_apps(id), action TEXT NOT NULL,
     status TEXT NOT NULL, result TEXT, created_at TEXT, updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS cover_letters (
+    job_id TEXT PRIMARY KEY REFERENCES jobs(id), draft TEXT, final TEXT, problems TEXT, model TEXT,
+    prompt_version TEXT, updated_at TEXT
+);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
     kept INTEGER, scored INTEGER, drafted INTEGER, failed_sources TEXT, error TEXT
@@ -126,7 +130,7 @@ class DB:
                 self.conn.executemany(
                     f"DELETE FROM {table} WHERE app_id IN (SELECT id FROM prepared_apps WHERE job_id = ?)", [(i,) for i in job_ids]
                 )
-            for table, col in (("prepared_apps", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
+            for table, col in (("cover_letters", "job_id"), ("prepared_apps", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
                 self.conn.executemany(f"DELETE FROM {table} WHERE {col} = ?", [(i,) for i in job_ids])
 
     def get_job(self, job_id: str) -> Job | None:
@@ -295,6 +299,24 @@ class DB:
             (min_score, stale, *NOT_TO_PREPARE, limit),
         ).fetchall()
         return [r[0] for r in rows]
+
+    # --- cover letters --------------------------------------------------------
+    def save_cover_letter(self, job_id: str, draft: str, problems: list[str], model: str, prompt_version: str, now: datetime) -> None:
+        with self.conn:
+            self.conn.execute(
+                "INSERT OR REPLACE INTO cover_letters (job_id, draft, final, problems, model, prompt_version, updated_at)"
+                " VALUES (?,?,?,?,?,?,?)",
+                (job_id, draft, draft, json.dumps(problems), model, prompt_version, _iso(now)),
+            )
+
+    def cover_letter(self, job_id: str) -> dict | None:
+        row = self.conn.execute("SELECT draft, final, problems FROM cover_letters WHERE job_id = ?", (job_id,)).fetchone()
+        return {"draft": row[0], "final": row[1], "problems": json.loads(row[2] or "[]")} if row else None
+
+    def set_cover_final(self, job_id: str, text: str, now: datetime) -> bool:
+        with self.conn:
+            cur = self.conn.execute("UPDATE cover_letters SET final = ?, updated_at = ? WHERE job_id = ?", (text, _iso(now), job_id))
+        return cur.rowcount > 0
 
     # --- agent commands -------------------------------------------------------
     def queue_command(self, app_id: int, action: str, now: datetime) -> int:

@@ -1,0 +1,18 @@
+{% set letter = cover_info(job_id) %}
+<section class="cover-block" id="cover-{{ job_id }}">
+  <h2>Cover letter</h2>
+  {% if letter %}
+    <textarea name="final" rows="16" hx-post="/jobs/{{ job_id }}/cover/final" hx-trigger="change, keyup changed delay:1s" hx-swap="none">{{ letter.final }}</textarea>
+    <span class="muted-text">{{ letter.final.split() | length }} words</span>
+    {% if letter.problems %}<ul class="errors">{% for p in letter.problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+    <p><a href="/jobs/{{ job_id }}/cover.pdf">Download PDF</a>
+      · <button hx-post="/jobs/{{ job_id }}/cover" hx-target="#cover-{{ job_id }}" hx-swap="outerHTML"
+                hx-confirm="Replace this letter (and your edits) with a new draft?" hx-indicator="#cover-ind-{{ job_id }}" hx-disabled-elt="this">Redo</button>
+      <span class="muted-text">Fill form attaches it when the form has a cover letter upload.</span></p>
+  {% else %}
+    <button hx-post="/jobs/{{ job_id }}/cover" hx-target="#cover-{{ job_id }}" hx-swap="outerHTML"
+            hx-indicator="#cover-ind-{{ job_id }}" hx-disabled-elt="this">Write cover letter</button>
+  {% endif %}
+  <span class="htmx-indicator muted-text" id="cover-ind-{{ job_id }}">Writing… (about 1 min)</span>
+  {% if errors %}<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</section>

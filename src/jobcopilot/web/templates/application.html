@@ -9,6 +9,7 @@
       <blockquote>{{ app.ai_ban_quote }}</blockquote></div>
   {% endif %}
   {% if answers %}
+  {% set file_keys = app.form.fields | selectattr("kind", "equalto", "file") | map(attribute="key") | list if app.form else [] %}
   <form id="answers-{{ app.id }}" class="answers" onsubmit="return false">
     {% for step, group in answers | groupby("step") %}
       {% if loop.length > 1 %}<h2>Step {{ step + 1 }}</h2>{% endif %}
@@ -23,6 +24,8 @@
             <input id="final-{{ a.id }}" name="final-{{ a.id }}" value="{{ a.final }}" {{ autosave | safe }}>
           {% elif a.kind == "cv" %}
             <p>Tailored CV{% if cv_info(job.id) %} — <a href="/jobs/{{ job.id }}/cv" target="_blank" rel="noopener">View ↗</a>{% else %} (not created yet){% endif %}</p>
+          {% elif is_cover_field(a.label) and a.field_key in file_keys %}
+            <p class="muted-text">Your cover letter is attached if you write one below; otherwise it's left for you.</p>
           {% else %}
             <p class="muted-text">Left for you: fill it in the form yourself.</p>
           {% endif %}
@@ -32,4 +35,5 @@
     {% endfor %}
   </form>
   {% endif %}
+  {% with job_id = job.id, errors = [] %}{% include "_cover.html" %}{% endwith %}
 {% endblock %}

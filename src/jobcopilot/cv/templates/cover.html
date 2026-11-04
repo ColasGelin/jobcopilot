@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="{{ language }}">
+<head><meta charset="utf-8"><style>{{ css | safe }}
+.letter { font-size: 10.2pt; line-height: 1.55; margin-top: 18pt; }
+.letter p { margin: 0 0 10pt; white-space: pre-line; }
+.meta { color: var(--grey); margin-top: 14pt; }
+</style></head>
+<body><div class="page">
+  <header>
+    <div class="top"><h1>{{ contact.name }}</h1></div>
+    <p class="contact">
+      {% for part in [contact.location, contact.email, contact.phone, contact.linkedin, contact.website] if part %}<span>{{ part }}</span>{% endfor %}
+    </p>
+  </header>
+  <p class="meta">{{ today }} · {{ company }} · {{ title }}</p>
+  <div class="letter">{% for para in paragraphs %}<p>{{ para }}</p>{% endfor %}</div>
+</div></body>
+</html>

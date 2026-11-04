@@ -69,3 +69,8 @@ button.check[aria-pressed="true"] { background: var(--strong); border-color: var
 .answers .answer { margin: 16px 0; }
 .answers label { display: block; font-weight: 600; margin-bottom: 4px; }
 .answers textarea, .answers input { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; }
+.add-job { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; }
+.add-job input { flex: 1 1 320px; font: inherit; padding: 6px 8px; }
+.add-job p { flex-basis: 100%; margin: 0; }
+.cover-block { margin: 28px 0; }
+.cover-block textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; }

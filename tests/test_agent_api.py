@@ -49,3 +49,9 @@ def test_unreachable_and_http_errors():
     a, _ = api(lambda r: httpx.Response(500))
     with pytest.raises(httpx.HTTPStatusError):
         a.application(1)
+
+
+def test_download_cover(tmp_path):
+    a, seen = api(lambda r: httpx.Response(200, content=b"%PDF", headers={"content-disposition": 'attachment; filename="Alex-Martin-Cover-Letter.pdf"'}))
+    assert a.download_cover(3, tmp_path) == tmp_path / "Alex-Martin-Cover-Letter.pdf"
+    assert str(seen[0].url).endswith("/api/applications/3/cover.pdf")

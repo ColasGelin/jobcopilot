@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.templating import Jinja2Templates
 
+from jobcopilot.apply.cover import cover_filename, is_cover_field, render_cover
 from jobcopilot.apply.models import FormSnapshot
 from jobcopilot.config import CompanyToCheck
 from jobcopilot.cv.bank import BankError, load_bank
@@ -377,6 +378,78 @@ def create_app(
         store.update_prepared(app_id, now, status="applied")
         return prep_fragment(request, prepared.job_id)
 
+    # --- add a job by link, cover letters --------------------------------------
+    @app.post("/jobs/add", response_class=HTMLResponse)
+    def add_job(request: Request, url: str = Form("")):
+        require_htmx(request)
+
+        def problem(message: str, status_code: int = 200):
+            return templates.TemplateResponse(request, "_add.html", {"error": message, "url": url}, status_code=status_code)
+
+        if preparer_factory is None:
+            return problem("Adding jobs is not configured.")
+        if not url.strip().lower().startswith(("http://", "https://")):
+            return problem("Paste the offer's full link (starting with https://).")
+        if not app.state.prepare_lock.acquire(blocking=False):
+            return problem("Already preparing an application; wait for it to finish.", 409)
+        try:
+            job_id, error = preparer_factory().add_job(url.strip(), clock())
+        except Exception as e:
+            return problem(f"Adding the job failed: {e}")
+        finally:
+            app.state.prepare_lock.release()
+        if error:
+            return problem(error)
+        return Response(status_code=200, headers={"HX-Redirect": f"/jobs/{job_id}/application"})
+
+    def job_or_404(job_id: str):
+        job = db().get_job(job_id)
+        if job is None:
+            raise HTTPException(404, "unknown job")
+        return job
+
+    def cover_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
+        return templates.TemplateResponse(request, "_cover.html", {"job_id": job_id, "errors": errors or []}, status_code=status_code)
+
+    @app.post("/jobs/{job_id}/cover", response_class=HTMLResponse)
+    def write_cover(request: Request, job_id: str):
+        require_htmx(request)
+        job_or_404(job_id)
+        if preparer_factory is None:
+            return cover_fragment(request, job_id, ["Cover letters are not configured."])
+        if not app.state.tailor_lock.acquire(blocking=False):
+            return cover_fragment(request, job_id, ["Already writing; wait for it to finish."], 409)
+        try:
+            preparer_factory().write_cover(job_id, clock())
+        except Exception as e:
+            return cover_fragment(request, job_id, [f"Writing the cover letter failed: {e}"])
+        finally:
+            app.state.tailor_lock.release()
+        return cover_fragment(request, job_id)
+
+    @app.post("/jobs/{job_id}/cover/final")
+    def save_cover(request: Request, job_id: str, final: str = Form("")):
+        require_htmx(request)
+        if not db().set_cover_final(job_id, final, clock()):
+            raise HTTPException(404, "no cover letter for this job")
+        return Response(status_code=204)
+
+    def cover_pdf(job_id: str) -> Response:
+        job, letter = job_or_404(job_id), db().cover_letter(job_id)
+        bank, error = bank_or_error()
+        if letter is None or bank is None:
+            raise HTTPException(404, error or "no cover letter for this job")
+        pdf = render_cover(bank.contact, job, letter["final"], clock().date())
+        name = cover_filename(bank.contact.name)
+        return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.get("/jobs/{job_id}/cover.pdf")
+    def cover_download(job_id: str):
+        return cover_pdf(job_id)
+
+    templates.env.globals["cover_info"] = lambda job_id: db().cover_letter(job_id)
+    templates.env.globals["is_cover_field"] = is_cover_field
+
     # --- JSON API for the Mac agent ----------------------------------------------
     def require_agent(request: Request) -> None:
         # Like HX-Request: a cross-site page cannot set a custom header, so it cannot drive the agent.
@@ -426,10 +499,16 @@ def create_app(
         fields = {(f.key, f.step): f for f in (prepared.form.fields if prepared.form else [])}
         answers = store.answers(app_id)
         last_step = max((a.step for a in answers), default=0)
+        has_cover = store.cover_letter(prepared.job_id) is not None
         payload = []
         for a in answers:
             field = fields.get((a.field_key, a.step))
-            if field is None or a.step != last_step or a.kind == "leave" or (a.kind != "cv" and not a.final.strip()):
+            if field is None or a.step != last_step:
+                continue
+            if a.kind == "leave" and has_cover and field.kind == "file" and is_cover_field(field.label):
+                payload.append(field.model_dump() | {"value": "Cover letter", "answer_kind": "cover"})
+                continue
+            if a.kind == "leave" or (a.kind != "cv" and not a.final.strip()):
                 continue
             payload.append(field.model_dump() | {"value": a.final, "answer_kind": a.kind})
         return {"job_url": store.get_job(prepared.job_id).url, "fields": payload}
@@ -437,6 +516,10 @@ def create_app(
     @api.get("/applications/{app_id}/cv.pdf")
     def agent_cv(app_id: int):
         return tailored_pdf(prepared_or_404(app_id).job_id)
+
+    @api.get("/applications/{app_id}/cover.pdf")
+    def agent_cover(app_id: int):
+        return cover_pdf(prepared_or_404(app_id).job_id)
 
     @api.post("/applications/{app_id}/form")
     def agent_form(app_id: int, form: FormSnapshot):

@@ -55,7 +55,9 @@ class Agent:
             reveal_form(page, data["fields"])
         wants_cv = any(f.get("answer_kind") == "cv" for f in data["fields"])
         cv = self.api.download_cv(app_id, self.downloads) if wants_cv else None
-        result = fill_fields(page, data["fields"], cv)
+        wants_cover = any(f.get("answer_kind") == "cover" for f in data["fields"])
+        cover = self.api.download_cover(app_id, self.downloads) if wants_cover else None
+        result = fill_fields(page, data["fields"], cv, cover)
         self.api.report(cmd_id, "done", filled=result.filled, unfilled=result.unfilled)
         self.log(f"Filled {len(result.filled)} fields ({len(result.unfilled)} left). Check the window and submit yourself.")
 

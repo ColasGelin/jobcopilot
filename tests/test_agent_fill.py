@@ -102,3 +102,13 @@ def test_option_labels_normalised_and_iframe_found_by_search(browser):
     r = fill_fields(pg, [field("r", '[name="r"]', "Relocate?", "radio", "No")], None)
     assert r.filled == ["r"]
     pg.close()
+
+
+def test_attaches_cover_letter(page, tmp_path):
+    cover = tmp_path / "Alex-Martin-Cover-Letter.pdf"
+    cover.write_bytes(b"%PDF-1.4 letter")
+    r = fill_fields(page, [field("cl", "#cl", "Cover letter", "file", "Cover letter", "cover")], None, cover)
+    assert r.filled == ["cl"]
+    assert page.evaluate("document.getElementById('cl').files[0].name") == "Alex-Martin-Cover-Letter.pdf"
+    r = fill_fields(page, [field("cl", "#cl", "Cover letter", "file", "Cover letter", "cover")], None, None)
+    assert r.unfilled[0]["why"] == "no cover letter to attach"

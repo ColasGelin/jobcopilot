@@ -1,0 +1,7 @@
+<form class="add-job" id="add-job" hx-post="/jobs/add" hx-target="#add-job" hx-swap="outerHTML"
+      hx-indicator="#add-ind" hx-disabled-elt="find button">
+  <input type="url" name="url" placeholder="Paste a job offer's link to prepare it (CV, answers…)" value="{{ url or '' }}" required>
+  <button>Add</button>
+  <span class="htmx-indicator muted-text" id="add-ind">Reading the offer, scoring, preparing… (2–3 min)</span>
+  {% if error %}<p class="errors">{{ error }}</p>{% endif %}
+</form>

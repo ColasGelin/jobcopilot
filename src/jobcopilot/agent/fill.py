@@ -47,18 +47,20 @@ def _find(page, f: dict):
     return None, None
 
 
-def _fill_one(page, f: dict, cv_path: Path | None) -> str | None:
+def _fill_one(page, f: dict, cv_path: Path | None, cover_path: Path | None) -> str | None:
     """None when filled, else why not."""
     _, loc = _find(page, f)
     if loc is None:
         return "field not found on the page"
     kind, value = f["kind"], f["value"]
     if kind == "file":
-        if f.get("answer_kind") != "cv":
+        files = {"cv": (cv_path, "no tailored CV to attach"), "cover": (cover_path, "no cover letter to attach")}
+        if f.get("answer_kind") not in files:
             return "file left for you"
-        if cv_path is None:
-            return "no tailored CV to attach"
-        loc.first.set_input_files(str(cv_path))
+        path, missing = files[f["answer_kind"]]
+        if path is None:
+            return missing
+        loc.first.set_input_files(str(path))
     elif kind == "select":
         loc.first.select_option(label=value, timeout=3000)
     elif kind in ("radio", "checkbox"):
@@ -72,11 +74,11 @@ def _fill_one(page, f: dict, cv_path: Path | None) -> str | None:
     return None
 
 
-def fill_fields(page, fields: list[dict], cv_path: Path | None) -> FillResult:
+def fill_fields(page, fields: list[dict], cv_path: Path | None, cover_path: Path | None = None) -> FillResult:
     result = FillResult()
     for f in fields:
         try:
-            why = _fill_one(page, f, cv_path)
+            why = _fill_one(page, f, cv_path, cover_path)
         except Exception as e:  # a widget that refuses (custom dropdown, read-only input)
             why = str(e).splitlines()[0][:150]
         if why:
