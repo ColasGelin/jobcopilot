@@ -32,6 +32,12 @@ def build_sources(names: list[str], client: httpx.Client, settings: Settings | N
             sources.append(HimalayasSource(client, queries, settings.himalayas_country if settings else "Spain"))
         elif n == "watchlist":
             sources.append(WatchlistSource(client, settings.watchlist if settings else []))
+        elif n == "linkedin":
+            from jobcopilot.config import Settings
+            from jobcopilot.sources.linkedin import LinkedInSource
+
+            s = settings or Settings(data_dir=".")
+            sources.append(LinkedInSource(s.linkedin_searches, s.linkedin_results, s.linkedin_hours_old))
         else:
             sources.append(SIMPLE[n](client))
     return sources

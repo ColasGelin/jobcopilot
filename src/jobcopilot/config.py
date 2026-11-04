@@ -64,6 +64,11 @@ class WatchlistEntry(BaseModel):
     slug: str
 
 
+class LinkedInSearch(BaseModel):
+    term: str
+    location: str
+
+
 class CompanyToCheck(BaseModel):
     """A company worth checking by hand (its job board can't be read automatically)."""
 
@@ -97,6 +102,14 @@ class Settings(BaseModel):
     # Caps LLM usage when a source (e.g. a new watchlist) brings many jobs at once; the rest wait for the next run.
     max_scored_per_run: int = 150
     prepare: PrepareSettings = Field(default_factory=PrepareSettings)
+    # Used only when "linkedin" is in `sources` (off by default: it goes against LinkedIn's terms).
+    linkedin_searches: list[LinkedInSearch] = Field(default_factory=lambda: [
+        LinkedInSearch(term="AI engineer", location="Málaga, Spain"),
+        LinkedInSearch(term="Python developer", location="Málaga, Spain"),
+        LinkedInSearch(term="LLM engineer", location="Spain"),
+    ])
+    linkedin_results: int = 25  # per search
+    linkedin_hours_old: int = 48
     data_dir: Path
 
     @property
