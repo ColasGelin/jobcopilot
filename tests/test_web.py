@@ -252,3 +252,10 @@ def test_toggle_requires_htmx_header(db_path):
 def test_companies_empty_state(db_path):
     DB(db_path)
     assert "No companies configured" in client(db_path).get("/companies").text
+
+
+def test_dashboard_has_its_own_tab_icon(db_path):
+    c = client(db_path)
+    assert '<link rel="icon" href="/static/favicon.svg"' in c.get("/").text
+    icon = c.get("/static/favicon.svg")
+    assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/svg+xml")
