@@ -263,3 +263,14 @@ def test_add_job_scoring_failure_still_prepares(env):
     p.fetch = lambda url: job
     job_id, error = p.add_job(job.url, NOW)
     assert error is None and db.prepared_for_job(job_id).status == "ready"
+
+
+def test_letter_sees_answers_and_answers_see_letter(env):
+    _, db, *_, jobs = env
+    p, llm, _ = preparer(env, [TAILORED, DRAFT, {"letter": "Dear Co1 team,\n\nI built FastAPI services.\n\nAlex"}, DRAFT])
+    app = p.prepare_job(jobs[0].id, NOW)
+    p.write_cover(jobs[0].id, NOW)
+    assert "I built a RAG assistant." in llm.calls[2][0]  # the letter prompt carries the drafted answer
+    db.update_prepared(app.id, NOW, status="needs_you", reason="re-read")
+    p.prepare_job(jobs[0].id, NOW)
+    assert "I built FastAPI services." in llm.calls[3][0]  # re-drafted answers carry the letter

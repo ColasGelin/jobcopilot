@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from jobcopilot.apply.overlap import repeats
 from jobcopilot.apply.voice import Voice
 from jobcopilot.config import ApplicationProfile
 from jobcopilot.cv.bank import Bank, Contact
@@ -21,8 +22,9 @@ DESCRIPTION_LIMIT = 6000
 SCHEMA = {"type": "object", "properties": {"letter": {"type": "string"}}, "required": ["letter"]}
 
 
-def _render_prompt(job: Job, bank: Bank, voice: Voice, candidate: str) -> str:
+def _render_prompt(job: Job, bank: Bank, voice: Voice, candidate: str, answers: list[tuple[str, str]]) -> str:
     values = {
+        "answers": "\n\n".join(f"Q: {q}\nA: {a}" for q, a in answers) or "(none)",
         "candidate": candidate.strip() or "(not given)",
         "max_words": str(MAX_WORDS),
         "name": bank.contact.name,
@@ -50,10 +52,11 @@ def _problems(text: str, bank: Bank, profile: ApplicationProfile, company: str, 
 
 
 def write_cover_letter(job: Job, bank: Bank, profile: ApplicationProfile, voice: Voice, llm: LLMClient,
-                       model: str, candidate: str = "") -> tuple[str, list[str]]:
+                       model: str, candidate: str = "", answers: list[tuple[str, str]] = ()) -> tuple[str, list[str]]:
     """(letter, problems). `candidate` is what they look for (profile summary), so the "why" fits them.
     After one retry, a letter that still breaks a rule is kept with its problems shown."""
-    prompt = _render_prompt(job, bank, voice, candidate)
+    answers = list(answers)
+    prompt = _render_prompt(job, bank, voice, candidate, answers)
     text, problems = "", []
     for attempt in range(2):
         try:
@@ -67,6 +70,7 @@ def write_cover_letter(job: Job, bank: Bank, profile: ApplicationProfile, voice:
             prompt += RETRY_SUFFIX.format(error=str(e)[:300])
             continue
         problems = _problems(text, bank, profile, job.company, job.description[:DESCRIPTION_LIMIT])
+        problems += repeats("cover letter", text, answers)
         if not problems:
             break
         if attempt == 0:

@@ -94,8 +94,10 @@ class Preparer:
             raise ValueError(f"unknown job {job_id!r}")
         voice = load_voice(self.settings.voice_dir, self.db.voice_examples())
         model = self.settings.llm.draft_model
+        app = self.db.prepared_for_job(job_id)
+        answers = [(a.label, a.final) for a in self.db.answers(app.id) if a.kind == "open" and a.final.strip()] if app else []
         text, problems = write_cover_letter(job, self.bank_loader(), self.profile.application, voice, self.llm, model,
-                                            candidate=self.profile.summary)
+                                            candidate=self.profile.summary, answers=answers)
         self.db.save_cover_letter(job_id, text, problems, model, COVER_PROMPT_VERSION, now)
 
     def ingest(self, app_id: int, form: FormSnapshot, now: datetime) -> PreparedApp:
@@ -145,7 +147,9 @@ class Preparer:
         try:
             cv_problem = self._ensure_cv(job, bank, fields)
             voice = load_voice(self.settings.voice_dir, self.db.voice_examples())
-            answers = draft_answers(job, form, fields, self.profile.application, bank, voice, self.llm, model, ai_ban=bool(quote))
+            letter = self.db.cover_letter(job.id)
+            answers = draft_answers(job, form, fields, self.profile.application, bank, voice, self.llm, model, ai_ban=bool(quote),
+                                    cover_letter=letter["final"] if letter else "")
         except LLMUnavailable as e:
             self.db.update_prepared(app_id, now, status="needs_you", reason=f"Claude unavailable: {e}", ai_ban_quote=quote)
             raise

@@ -19,6 +19,8 @@ must be written for THIS company and THIS role: a letter that could be sent to a
   phrasing, how they open and structure things, plain words). No "I am excited to apply", no buzzwords, no em dashes.
 - Correct spelling and grammar, but keep their voice.
 - Write in the language of the job posting.
+- Do not repeat what the candidate already wrote in this application's form answers (below): the recruiter reads
+  both. Use different experiences or a different angle, and never reuse their sentences.
 - At most {max_words} words. Start with a greeting to the company's team. No address block and no date: the
   template adds them.
 
@@ -29,6 +31,9 @@ Company: {company}
 Title: {job_title}
 Description:
 {description}
+
+## The candidate's answers in this application's form (do not repeat them)
+{answers}
 
 ## About the candidate (what they are looking for and care about)
 {candidate}

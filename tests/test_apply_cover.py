@@ -83,3 +83,11 @@ def test_company_facts_from_the_posting_are_allowed(bank):
     letter = {"letter": "Dear Acme team,\n\nYou run agents on Kubernetes for 400 customers, and I built a RAG assistant."}
     (_, problems), _ = write(bank, [letter], description="We run agents on Kubernetes for 400 customers.")
     assert problems == []
+
+
+def test_letter_complements_the_form_answers(bank):
+    llm = FakeLLMClient([{"letter": "Dear Acme team,\n\nI built a RAG assistant over 2,000 support articles with LangChain and Qdrant.\n\nAlex Martin"}] * 2)
+    answers = [("Why Acme?", "I built a RAG assistant over 2,000 support articles with LangChain and Qdrant last year.")]
+    text, problems = write_cover_letter(make_job(1, company="Acme"), bank, ApplicationProfile(), VOICE, llm, "sonnet", answers=answers)
+    assert "Why Acme?" in llm.calls[0][0] and "do not repeat" in llm.calls[0][0].lower()
+    assert any("repeats your answer to \"Why Acme?\"" in p for p in problems) and len(llm.calls) == 2

@@ -12,6 +12,7 @@ import re
 from pydantic import BaseModel, ValidationError
 
 from jobcopilot.apply.models import Answer, FormField, FormSnapshot
+from jobcopilot.apply.overlap import repeats
 from jobcopilot.apply.voice import Voice
 from jobcopilot.config import ApplicationProfile
 from jobcopilot.cv.bank import Bank
@@ -21,7 +22,7 @@ from jobcopilot.llm import LLMClient, LLMError, LLMUnavailable
 from jobcopilot.models import Job
 from jobcopilot.scoring import RETRY_SUFFIX, load_prompt
 
-APPLY_PROMPT_VERSION = "apply_v1"
+APPLY_PROMPT_VERSION = "apply_v2"
 DESCRIPTION_LIMIT = 6000
 DEFAULT_WORDS = 150
 EEO_WORDS = ("gender", "sex", "ethnic", "race", "racial", "disabilit", "veteran", "sexual orientation", "pronoun",
@@ -96,7 +97,8 @@ def _limit_text(field: FormField) -> str:
     return f"{field.max_length} characters" if field.max_length else f"{word_limit(field)} words"
 
 
-def _render(job: Job, fields: list[FormField], profile: ApplicationProfile, bank: Bank, voice: Voice, ai_ban: bool) -> str:
+def _render(job: Job, fields: list[FormField], profile: ApplicationProfile, bank: Bank, voice: Voice, ai_ban: bool,
+            cover_letter: str) -> str:
     payload = [
         {"key": f.key, "label": f.label, "help": f.description or None, "kind": f.kind, "options": f.options or None,
          "required": f.required, "limit": _limit_text(f) if f.kind in ("text", "textarea") else None}
@@ -114,6 +116,7 @@ def _render(job: Job, fields: list[FormField], profile: ApplicationProfile, bank
         "recent": "\n\n".join(f"Q: {q}\nA: {a}" for q, a in voice.recent) or "(none yet)",
         "notes": voice.notes or "(none)",
         "bank": bank_for_prompt(bank),
+        "cover_letter": cover_letter.strip() or "(none yet)",
     }
     prompt = load_prompt(APPLY_PROMPT_VERSION)
     for key, value in values.items():
@@ -176,10 +179,24 @@ def fallback_answers(fields: list[FormField], profile: ApplicationProfile, bank:
     return answers
 
 
+def _without_repeats(answers: list[Answer], cover_letter: str) -> list[Answer]:
+    """Flag an open answer that repeats an earlier answer of this form or the cover letter."""
+    out, earlier = [], []
+    for a in answers:
+        if a.kind == "open" and a.draft:
+            found = repeats(a.label, a.draft, earlier, cover_letter)
+            if found:
+                a = a.model_copy(update={"problems": a.problems + found})
+            earlier.append((a.label, a.draft))
+        out.append(a)
+    return out
+
+
 def draft_answers(job: Job, form: FormSnapshot, fields: list[FormField], profile: ApplicationProfile, bank: Bank,
-                  voice: Voice, llm: LLMClient, model: str, ai_ban: bool) -> list[Answer]:
-    """One answer per field in `fields` (a whole form or one step of it), in field order."""
-    prompt = _render(job, fields, profile, bank, voice, ai_ban)
+                  voice: Voice, llm: LLMClient, model: str, ai_ban: bool, cover_letter: str = "") -> list[Answer]:
+    """One answer per field in `fields` (a whole form or one step of it), in field order. Open answers must not
+    repeat each other or the job's cover letter."""
+    prompt = _render(job, fields, profile, bank, voice, ai_ban, cover_letter)
     answers: list[Answer] = []
     for attempt in range(2):
         try:
@@ -192,7 +209,7 @@ def draft_answers(job: Job, form: FormSnapshot, fields: list[FormField], profile
             prompt += RETRY_SUFFIX.format(error=str(e)[:500])
             continue
         items = {i.key: i for i in resp.answers}
-        answers = [_answer(f, items.get(f.key), profile, bank, ai_ban) for f in fields]
+        answers = _without_repeats([_answer(f, items.get(f.key), profile, bank, ai_ban) for f in fields], cover_letter)
         problems = [p for a in answers for p in a.problems]
         if not problems:
             return answers

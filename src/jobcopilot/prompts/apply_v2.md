@@ -20,6 +20,10 @@ Write as the candidate, in the first person, so it reads like the candidate wrot
 - Use only facts from the experience bank. Never invent a project, a technology, a number or a result.
 - Answer in the language of the question.
 - Respect each field's limit. Without a stated limit, stay under {default_words} words.
+- Each open answer uses different material: do not repeat the same project, example or sentence in two answers.
+  If two questions overlap, answer the second from a different angle or with a different experience.
+- Do not repeat the cover letter below either: the recruiter reads both, so the answers add what the letter
+  does not say.
 {ai_ban_rule}
 
 ## The job
@@ -30,6 +34,9 @@ Description:
 
 ## The form fields (JSON)
 {fields}
+
+## The candidate's cover letter for this job (do not repeat it)
+{cover_letter}
 
 ## The candidate's writing samples (their own words, typos included)
 {samples}

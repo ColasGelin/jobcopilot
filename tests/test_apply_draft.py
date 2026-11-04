@@ -196,3 +196,26 @@ def test_lower_word_limits_in_help_text():
     assert word_limit(f("a", "A", "textarea", description="Max 50 words")) == 50
     assert word_limit(f("a", "A", "textarea", description="Great answers are 200-400 words.")) == 400
     assert word_limit(f("a", "A", "textarea")) == 150
+
+
+def test_answers_complement_the_letter_and_each_other(bank):
+    fields = [f("why", "Why Acme?", "textarea"), f("proj", "Your best project?", "textarea")]
+    same = "I built a RAG assistant over 2,000 support articles with LangChain and Qdrant."
+    resp = {"answers": [{"key": "why", "kind": "open", "answer": same}, {"key": "proj", "kind": "open", "answer": same}]}
+    llm = FakeLLMClient([resp, resp])
+    job = make_job(1, company="Acme")
+    answers = draft_answers(job, FormSnapshot(url="https://x", fields=fields), fields, PROFILE, bank, VOICE, llm, "sonnet",
+                            False, cover_letter="Dear Acme, I wrote an MCP server so agents can query the PostgreSQL database.")
+    prompt = llm.calls[0][0]
+    assert "I wrote an MCP server so agents can query" in prompt and "different" in prompt.lower()
+    assert any("repeats your answer to \"Why Acme?\"" in p for p in answers[1].problems)
+    assert len(llm.calls) == 2
+
+
+def test_answer_repeating_the_letter_is_flagged(bank):
+    letter = "Dear Acme team, I built a RAG assistant over 2,000 support articles with LangChain and Qdrant."
+    resp = {"answers": [{"key": "why", "kind": "open", "answer": "I built a RAG assistant over 2,000 support articles with LangChain and Qdrant."}]}
+    fields = [f("why", "Why Acme?", "textarea")]
+    answers = draft_answers(make_job(1), FormSnapshot(url="https://x", fields=fields), fields, PROFILE, bank, VOICE,
+                            FakeLLMClient([resp, resp]), "sonnet", False, cover_letter=letter)
+    assert any("repeats your cover letter" in p for p in answers[0].problems)
