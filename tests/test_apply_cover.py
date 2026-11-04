@@ -35,7 +35,7 @@ def test_writes_in_voice_with_facts_from_bank(bank):
     prompt = llm.calls[0][0]
     for s in ("The most interesting to me is the MCP server.", "LLM Engineer", "Acme", "Nous construisons des agents.", "acme.rag", str(MAX_WORDS)):
         assert s in prompt
-    assert llm.calls[0][2] == "sonnet" and COVER_PROMPT_VERSION == "cover_v2"
+    assert llm.calls[0][2] == "sonnet" and COVER_PROMPT_VERSION == "cover_v3"
 
 
 def test_invented_fact_retried_then_kept_with_problems(bank):
@@ -75,7 +75,7 @@ def test_prompt_asks_why_this_company_and_role(bank):
     _, llm = write(bank, [{"letter": GOOD}])
     prompt = llm.calls[0][0]
     assert "Looking for remote AI agent roles; loves security." in prompt
-    for s in ("why this role", "concrete detail", "never present"):
+    for s in ("why this role", "own words", "never present", "you are looking for"):
         assert s in prompt.lower()
 
 
@@ -91,3 +91,10 @@ def test_letter_complements_the_form_answers(bank):
     text, problems = write_cover_letter(make_job(1, company="Acme"), bank, ApplicationProfile(), VOICE, llm, "sonnet", answers=answers)
     assert "Why Acme?" in llm.calls[0][0] and "do not repeat" in llm.calls[0][0].lower()
     assert any("repeats your answer to \"Why Acme?\"" in p for p in problems) and len(llm.calls) == 2
+
+
+def test_copying_the_posting_word_for_word_is_flagged(bank):
+    posting = "You will design and ship agentic workflows that help our customers automate their support operations."
+    letter = {"letter": "Dear Acme team,\n\nI want to design and ship agentic workflows that help our customers automate things.\n\nAlex"}
+    (_, problems), llm = write(bank, [letter, letter], description=posting)
+    assert any("copies the job posting" in p for p in problems) and len(llm.calls) == 2

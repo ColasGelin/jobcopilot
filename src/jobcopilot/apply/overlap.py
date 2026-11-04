@@ -23,6 +23,12 @@ def _shared(text: str, other: str) -> str | None:
     return None
 
 
+def copied(label: str, text: str, posting: str) -> list[str]:
+    """A passage lifted word for word from the job posting reads as mechanical: it should be rephrased."""
+    passage = _shared(text, posting) if posting else None
+    return [f'{label} copies the job posting word for word: "{passage}"; say it in your own words'] if passage else []
+
+
 def repeats(label: str, text: str, answers: list[tuple[str, str]], letter: str = "") -> list[str]:
     """Problems for `text` (named `label`) repeating one of the other `answers` (question, text) or the cover letter."""
     problems = []

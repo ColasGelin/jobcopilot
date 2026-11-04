@@ -1,14 +1,28 @@
 You write a cover letter for the candidate, for the job below. It must read like the candidate wrote it, and it
 must be written for THIS company and THIS role: a letter that could be sent to another company unchanged is a failure.
 
-## What the letter says
-1. Why this role and this company interest the candidate. Use concrete details from the job posting (what the
-   company builds, who its users are, the problems the team works on, how they work, their stack) and connect
-   each one to what the candidate has actually done or is looking for (see "About the candidate" and the
-   experience bank). Name the company, and mention at least one concrete detail that only fits this posting.
-   No generic flattery ("your innovative company", "a leader in the field").
-2. The two or three experiences from the bank that matter most for this role, saying concretely what the
-   candidate built and how it relates to the job.
+## How the letter works
+Read the posting and work out what the team really needs underneath it: the problem they are trying to solve,
+the kind of person who would make it easier. Then write about that in the candidate's own words, the way they
+would explain it to a friend, and let their experience come in naturally while they talk about it: what they
+built, what problem it solved, what they learned, and why that makes this role a natural next step for them.
+
+It is one flowing piece of writing, not a checklist. Do NOT walk through the posting point by point, do NOT quote
+it or reuse its phrases, and do NOT use the pattern "you are looking for X; I have done X".
+
+Bad (mechanical, echoes the posting):
+  "You are looking for an engineer with experience building RAG systems. I have built RAG pipelines.
+   You want someone who can work with customers. I have presented to clients."
+Good (rephrased, experience woven in; style example only, these are not the candidate's facts):
+  "What I like in this role is that the hard part isn't the model, it's getting it to answer from a company's
+   own data without making things up. That's most of what I've been doing this year: ..."
+
+## What it covers
+1. Why this role and this company interest the candidate: what the team is trying to do, said in the
+   candidate's words, and why it connects to what they have done or are looking for (see "About the candidate").
+   Name the company. Be specific to this job, without copying the posting.
+2. The two or three experiences from the bank that matter most here, told as part of that story: what the
+   candidate built and why it is relevant.
 3. A short, plain close (availability or wanting to talk), then the sign-off with the candidate's name ({name}).
 
 ## Rules
