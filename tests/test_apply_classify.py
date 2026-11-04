@@ -47,3 +47,9 @@ def test_comment_box_and_search_are_not_an_application_form():
 def test_one_applicant_field_is_enough():
     fields = [dict(F, key="e", label="Email", kind="email"), dict(F, key="m", label="Anything else?", kind="textarea")]
     assert isinstance(classify([("https://a", raw(fields))], "https://a"), FormSnapshot)
+
+
+def test_a_long_post_used_as_a_label_does_not_count_as_applicant():
+    post = "robz75 1 day ago | parent | on: Ask HN: Who is hiring? Evaboot | Agentic Python Engineer | REMOTE " + "x " * 60 + "LinkedIn Sales Navigator"
+    snap = classify([("https://news.ycombinator.com/item?id=1", raw([dict(F, key="text", label=post, kind="textarea")]))], "https://x")
+    assert snap == NeedsYou(reason="No application form found")

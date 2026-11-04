@@ -11,6 +11,7 @@ from importlib import resources
 from jobcopilot.apply.models import FormField, FormSnapshot, NeedsYou
 
 PAGE_TEXT_LIMIT = 20_000
+LABEL_LIMIT = 150
 LOAD_TIMEOUT_MS = 30_000
 SETTLE_TIMEOUT_MS = 8_000
 APPLY_LABELS = ("apply", "apply now", "apply for this job", "apply for this position", "postuler", "solicitar", "inscribirse")
@@ -31,7 +32,7 @@ def classify(frames: list[tuple[str, dict]], url: str) -> FormSnapshot | NeedsYo
     if any(raw.get("has_password") for _, raw in frames):
         return NeedsYou(reason=SIGN_IN)
     fields = [
-        FormField(**f, frame="" if i == 0 else frame_url)
+        FormField(**(f | {"label": (f.get("label") or "")[:LABEL_LIMIT]}), frame="" if i == 0 else frame_url)
         for i, (frame_url, raw) in enumerate(frames)
         for f in raw.get("fields") or []
     ]
