@@ -15,14 +15,15 @@ from jobcopilot.llm import LLMClient, LLMError, LLMUnavailable
 from jobcopilot.models import Job
 from jobcopilot.scoring import RETRY_SUFFIX, load_prompt
 
-COVER_PROMPT_VERSION = "cover_v1"
+COVER_PROMPT_VERSION = "cover_v2"
 MAX_WORDS = 300
 DESCRIPTION_LIMIT = 6000
 SCHEMA = {"type": "object", "properties": {"letter": {"type": "string"}}, "required": ["letter"]}
 
 
-def _render_prompt(job: Job, bank: Bank, voice: Voice) -> str:
+def _render_prompt(job: Job, bank: Bank, voice: Voice, candidate: str) -> str:
     values = {
+        "candidate": candidate.strip() or "(not given)",
         "max_words": str(MAX_WORDS),
         "name": bank.contact.name,
         "company": job.company,
@@ -39,8 +40,9 @@ def _render_prompt(job: Job, bank: Bank, voice: Voice) -> str:
     return prompt
 
 
-def _problems(text: str, bank: Bank, profile: ApplicationProfile, company: str) -> list[str]:
-    problems = check_text("cover letter", text, bank, extra_source=" ".join([company, *profile.values().values()]))
+def _problems(text: str, bank: Bank, profile: ApplicationProfile, company: str, posting: str) -> list[str]:
+    # Company facts may come from the posting; the prompt forbids presenting them as the candidate's own.
+    problems = check_text("cover letter", text, bank, extra_source=" ".join([company, posting, *profile.values().values()]))
     words = len(text.split())
     if words > MAX_WORDS:
         problems.append(f"cover letter: {words} words; maximum is {MAX_WORDS}")
@@ -48,9 +50,10 @@ def _problems(text: str, bank: Bank, profile: ApplicationProfile, company: str) 
 
 
 def write_cover_letter(job: Job, bank: Bank, profile: ApplicationProfile, voice: Voice, llm: LLMClient,
-                       model: str) -> tuple[str, list[str]]:
-    """(letter, problems). After one retry, a letter that still breaks a rule is kept with its problems shown."""
-    prompt = _render_prompt(job, bank, voice)
+                       model: str, candidate: str = "") -> tuple[str, list[str]]:
+    """(letter, problems). `candidate` is what they look for (profile summary), so the "why" fits them.
+    After one retry, a letter that still breaks a rule is kept with its problems shown."""
+    prompt = _render_prompt(job, bank, voice, candidate)
     text, problems = "", []
     for attempt in range(2):
         try:
@@ -63,7 +66,7 @@ def write_cover_letter(job: Job, bank: Bank, profile: ApplicationProfile, voice:
                 raise LLMError(f"Claude's answer was invalid twice: {e}") from e
             prompt += RETRY_SUFFIX.format(error=str(e)[:300])
             continue
-        problems = _problems(text, bank, profile, job.company)
+        problems = _problems(text, bank, profile, job.company, job.description[:DESCRIPTION_LIMIT])
         if not problems:
             break
         if attempt == 0:

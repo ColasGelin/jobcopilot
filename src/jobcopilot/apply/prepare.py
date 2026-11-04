@@ -94,7 +94,8 @@ class Preparer:
             raise ValueError(f"unknown job {job_id!r}")
         voice = load_voice(self.settings.voice_dir, self.db.voice_examples())
         model = self.settings.llm.draft_model
-        text, problems = write_cover_letter(job, self.bank_loader(), self.profile.application, voice, self.llm, model)
+        text, problems = write_cover_letter(job, self.bank_loader(), self.profile.application, voice, self.llm, model,
+                                            candidate=self.profile.summary)
         self.db.save_cover_letter(job_id, text, problems, model, COVER_PROMPT_VERSION, now)
 
     def ingest(self, app_id: int, form: FormSnapshot, now: datetime) -> PreparedApp:
