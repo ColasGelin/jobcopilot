@@ -8,7 +8,7 @@
     </div>
     {% if run %}
       <p class="run-line{% if run.error or run.failed_sources %} has-problem{% endif %}">
-        Last run {{ run.started_at.strftime("%d %b, %H:%M") }}: {{ run.fetched }} fetched, {{ run.new }} new{% if run.failed_sources %}. Failed: {{ run.failed_sources | join(", ") }}{% endif %}{% if run.error %}. <a href="/runs">Problem in this run</a>{% endif %}
+        Last run {{ run.started_at.strftime("%d %b, %H:%M") }}: {{ run.fetched }} fetched, {{ run.kept }} kept for scoring{% if run.failed_sources %}. Failed: {{ run.failed_sources | join(", ") }}{% endif %}{% if run.error %}. <a href="/runs">Problem in this run</a>{% endif %}
       </p>
     {% endif %}
   </div>

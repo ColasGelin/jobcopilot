@@ -24,6 +24,9 @@ SIMPLE = {cls.name: cls for cls in (RemotiveSource, RemoteOKSource, ArbeitnowSou
 REGISTRY = SIMPLE  # kept for backwards compatibility
 
 
+LINKEDIN_PAUSE_S = 30  # LinkedIn answers 429 after a few searches in a row
+
+
 def build_sources(names: list[str], client: httpx.Client, settings: Settings | None = None) -> list[Source]:
     sources: list[Source] = []
     for n in names:
@@ -37,7 +40,13 @@ def build_sources(names: list[str], client: httpx.Client, settings: Settings | N
             from jobcopilot.sources.linkedin import LinkedInSource
 
             s = settings or Settings(data_dir=".")
-            sources.append(LinkedInSource(s.linkedin_searches, s.linkedin_results, s.linkedin_hours_old))
+            sources.append(LinkedInSource(s.linkedin_searches, s.linkedin_results, s.linkedin_hours_old, pause_s=LINKEDIN_PAUSE_S))
+        elif n == "indeed":
+            from jobcopilot.config import Settings
+            from jobcopilot.sources.indeed import IndeedSource
+
+            s = settings or Settings(data_dir=".")
+            sources.append(IndeedSource(s.indeed_searches, s.indeed_results, s.indeed_hours_old, s.indeed_country))
         else:
             sources.append(SIMPLE[n](client))
     return sources

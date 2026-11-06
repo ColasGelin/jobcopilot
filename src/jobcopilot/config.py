@@ -64,9 +64,12 @@ class WatchlistEntry(BaseModel):
     slug: str
 
 
-class LinkedInSearch(BaseModel):
+class BoardSearch(BaseModel):
+    """One search on a job board read through JobSpy."""
+
     term: str
     location: str
+    remote: bool = False  # ask the board for remote jobs only; it doesn't always say so on the listing
 
 
 class CompanyToCheck(BaseModel):
@@ -103,13 +106,21 @@ class Settings(BaseModel):
     max_scored_per_run: int = 150
     prepare: PrepareSettings = Field(default_factory=PrepareSettings)
     # Used only when "linkedin" is in `sources` (off by default: it goes against LinkedIn's terms).
-    linkedin_searches: list[LinkedInSearch] = Field(default_factory=lambda: [
-        LinkedInSearch(term="AI engineer", location="Málaga, Spain"),
-        LinkedInSearch(term="Python developer", location="Málaga, Spain"),
-        LinkedInSearch(term="LLM engineer", location="Spain"),
+    linkedin_searches: list[BoardSearch] = Field(default_factory=lambda: [
+        BoardSearch(term="AI engineer", location="Málaga, Spain"),
+        BoardSearch(term="Python developer", location="Málaga, Spain"),
+        BoardSearch(term="LLM engineer", location="Spain", remote=True),
     ])
     linkedin_results: int = 25  # per search
     linkedin_hours_old: int = 48
+    # Used only when "indeed" is in `sources` (off by default: scraping goes against Indeed's terms too).
+    indeed_searches: list[BoardSearch] = Field(default_factory=lambda: [
+        BoardSearch(term="AI engineer", location="Spain", remote=True),
+        BoardSearch(term="Python developer", location="Málaga, Spain"),
+    ])
+    indeed_results: int = 25  # per search
+    indeed_hours_old: int = 72
+    indeed_country: str = "spain"
     data_dir: Path
 
     @property

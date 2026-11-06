@@ -14,9 +14,14 @@ prepare: {enabled: true, min_score: 75, max_per_run: 10}
 sources: [remotive, remoteok, arbeitnow, hn, jobicy, himalayas, workingnomads, wwr, watchlist]
 # Add "linkedin" to sources to search LinkedIn's public listings (no login, via JobSpy, 3-7 s between requests).
 # It goes against LinkedIn's terms; the realistic risk is a temporary IP block, never your account. Example:
-# linkedin_searches: [{term: AI engineer, location: "Málaga, Spain"}, {term: LLM engineer, location: Spain}]
+# linkedin_searches: [{term: AI engineer, location: "Málaga, Spain"}, {term: LLM engineer, location: Spain, remote: true}]
 # linkedin_results: 25      # per search
 # linkedin_hours_old: 48
+# Add "indeed" to sources to search Indeed the same way; scraping goes against Indeed's terms too. `remote: true` asks for
+# remote jobs only: use it for country-wide searches, or on-site jobs in other cities fill the results and get filtered out.
+# indeed_searches: [{term: AI engineer, location: Spain, remote: true}, {term: Python developer, location: "Málaga, Spain"}]
+# indeed_country: spain
+# indeed_hours_old: 72
 
 himalayas_queries: [python, AI engineer, LLM, machine learning]
 himalayas_country: Spain
