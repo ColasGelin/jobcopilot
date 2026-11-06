@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Overview</p>
+      <h1>Dashboard</h1>
+    </div>
+    {% if run %}
+      <p class="run-line{% if run.error or run.failed_sources %} has-problem{% endif %}">
+        Last run {{ run.started_at.strftime("%d %b, %H:%M") }}: {{ run.fetched }} fetched, {{ run.new }} new{% if run.failed_sources %}. Failed: {{ run.failed_sources | join(", ") }}{% endif %}{% if run.error %}. <a href="/runs">Problem in this run</a>{% endif %}
+      </p>
+    {% endif %}
+  </div>
+  {% if not kpis.found %}
+    <p class="empty">No offers yet. They appear after the daily run.</p>
+  {% else %}
+    <div class="kpis">
+      {% for label, value, hint in [("Offers found", kpis.found, "scored so far"), ("Strong matches", kpis.strong, "score 80 or more"), ("Ready to send", kpis.ready, "applications prepared"), ("Applied", kpis.applied, "applications sent"), ("Interviews", kpis.interviews, "interview or offer")] %}
+        <div class="kpi"><p>{{ label }}</p><strong>{{ value }}</strong><span>{{ hint }}</span></div>
+      {% endfor %}
+    </div>
+    <div class="dash-grid">
+      <section class="panel span-2">
+        <h2 class="panel-title">From offer to interview</h2>
+        {% with rows = funnel %}{% include "_chart_bars.html" %}{% endwith %}
+      </section>
+      <section class="panel todo">
+        <h2 class="panel-title">To do now{% if todo.total %} <span>{{ todo.total }}</span>{% endif %}</h2>
+        {% for t in todo["items"] %}
+          <a class="todo-item {{ t.kind }}" href="{{ t.href }}">
+            <b>{{ t.company }}</b><span class="todo-score">{{ t.score }}</span>
+            <small>{{ t.title }}</small>
+            <small class="what">{{ t.what }}</small>
+          </a>
+        {% else %}
+          <p class="empty">Nothing waiting on you.</p>
+        {% endfor %}
+        {% if todo.total > todo["items"] | length %}<p class="empty"><a href="/today">See more on Today</a></p>{% endif %}
+      </section>
+      <section class="panel span-2">
+        <h2 class="panel-title">Offers found per day <small>last {{ days | length }} days</small></h2>
+        {% set top = (days | map(attribute="count") | max) or 1 %}
+        <div class="columns-chart" role="img" aria-label="Offers found per day: {% for d in days %}{{ d.label }} {{ d.count }}{% if not loop.last %}, {% endif %}{% endfor %}">
+          {% for d in days %}
+            <div class="col" title="{{ d.label }}: {{ d.count }}">
+              {% if d.count %}<b>{{ d.count }}</b>{% endif %}
+              <span class="col-bar" style="height: {{ (d.count / top * 100) | round(1) }}%"></span>
+              <small>{% if loop.first or loop.last or loop.index0 % 3 == 0 %}{{ d.label }}{% endif %}</small>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+      <section class="panel">
+        <h2 class="panel-title">Match scores</h2>
+        {% with rows = scores %}{% include "_chart_bars.html" %}{% endwith %}
+      </section>
+      <section class="panel span-2">
+        <h2 class="panel-title">Where offers come from</h2>
+        {% with rows = sources %}{% include "_chart_bars.html" %}{% endwith %}
+      </section>
+    </div>
+  {% endif %}
+{% endblock %}

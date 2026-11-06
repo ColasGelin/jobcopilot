@@ -9,17 +9,27 @@
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
-  <header>
-    <strong>jobcopilot</strong>
-    <nav>
-      <a href="/" {% if active == 'today' %}aria-current="page"{% endif %}>Today</a>
-      <a href="/pipeline" {% if active == 'pipeline' %}aria-current="page"{% endif %}>Pipeline</a>
-      <a href="/companies" {% if active == 'companies' %}aria-current="page"{% endif %}>Companies</a>
-      <a href="/cv" {% if active == 'cv' %}aria-current="page"{% endif %}>CV</a>
-      <a href="/runs" {% if active == 'runs' %}aria-current="page"{% endif %}>Runs</a>
-    </nav>
-  </header>
-  <main class="{% block main_class %}{% endblock %}">{% block content %}{% endblock %}</main>
+  {% set nav = [
+    ("dashboard", "/", "Dashboard", "M3 3h6v8H3zM11 3h6v4h-6zM11 9h6v8h-6zM3 13h6v4H3z"),
+    ("today", "/today", "Today", "M4 4h12v13H4zM4 8h12M7 2v4M13 2v4"),
+    ("pipeline", "/pipeline", "Pipeline", "M3 4h4v13H3zM8 4h4v8H8zM13 4h4v11h-4z"),
+    ("companies", "/companies", "Companies", "M4 17V4h7v13M11 8h5v9M2 17h16M6.5 7h2M6.5 10h2M6.5 13h2"),
+    ("cv", "/cv", "CV", "M5 2h7l3 3v13H5zM8 8h4M8 11h4M8 14h4"),
+    ("runs", "/runs", "Runs", "M3 10h3l2-6 4 12 2-6h3"),
+  ] %}
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/"><img src="/static/favicon.svg" alt="" width="24" height="24">jobcopilot</a>
+      <nav aria-label="Main">
+        {% for key, href, label, icon in nav %}
+          <a href="{{ href }}" {% if active == key %}aria-current="page"{% endif %}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="{{ icon }}"/></svg>{{ label }}
+          </a>
+        {% endfor %}
+      </nav>
+    </aside>
+    <main class="{% block main_class %}{% endblock %}">{% block content %}{% endblock %}</main>
+  </div>
   <script>
     // Swap 409 ("already generating") fragments too; other errors keep htmx's default (no swap).
     document.addEventListener("DOMContentLoaded", () => {
@@ -27,6 +37,10 @@
         { code: "204", swap: false }, { code: "409", swap: true }, { code: "[23]..", swap: true },
         { code: "[45]..", swap: false, error: true },
       ];
+    });
+    // A problem reported inside a closed panel must not stay hidden.
+    document.addEventListener("htmx:afterSettle", () => {
+      document.querySelectorAll("details.work .errors").forEach((el) => (el.closest("details").open = true));
     });
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-copy]");

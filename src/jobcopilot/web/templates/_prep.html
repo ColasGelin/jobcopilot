@@ -1,10 +1,8 @@
 {% set app = prep_info(job_id) %}{% set cmd = command_info(app.id) if app else None %}
 <div class="prep-block" id="prep-{{ job_id }}">
-  <b>Application:</b>
+  <b>Application</b>
   {% if not app %}
-    <button hx-post="/jobs/{{ job_id }}/prepare" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML"
-            hx-indicator="#prep-ind-{{ job_id }}" hx-disabled-elt="this">Prepare now</button>
-    <span class="htmx-indicator muted-text" id="prep-ind-{{ job_id }}">Reading the form and drafting… (1–2 min)</span>
+    <span class="muted-text">Not prepared yet.</span>
   {% else %}
     {% if app.status == "ready" %}<span class="badge ready">Application ready</span>
     {% elif app.status == "needs_you" %}<span class="badge needs">Needs you: {{ app.reason }}</span>

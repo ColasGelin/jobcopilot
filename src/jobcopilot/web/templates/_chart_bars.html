@@ -1,0 +1,10 @@
+{% set top = (rows | map(attribute="count") | max) or 1 %}
+<ul class="bars">
+  {% for r in rows %}
+    <li title="{{ r.label }}: {{ r.count }}">
+      <span class="bar-label">{{ r.label }}</span>
+      <span class="bar-track"><span class="bar" style="width: {{ (r.count / top * 100) | round(1) }}%"></span></span>
+      <b>{{ r.count }}</b>
+    </li>
+  {% endfor %}
+</ul>

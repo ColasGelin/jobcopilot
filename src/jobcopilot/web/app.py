@@ -1,4 +1,4 @@
-"""Local dashboard: Today, Pipeline, Companies, CV and Runs views over jobs.db."""
+"""Local dashboard: Dashboard, Today, Pipeline, Companies, CV and Runs views over jobs.db."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from jobcopilot.db import DB
 from jobcopilot.llm import LLMClient, LLMError
 from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
+from jobcopilot.web.insights import TODAY_FILTERS, dashboard, next_step, steps
 
 HERE = Path(__file__).parent
 
@@ -101,8 +102,34 @@ def create_app(
     templates.env.globals["command_info"] = lambda app_id: db().latest_command(app_id)
     templates.env.globals["apply_url"] = lambda job_id: db().apply_url(job_id)
 
+    def progress_info(job_id: str) -> dict:
+        """What the progress strip shows: the steps of a job and the one thing to do next."""
+        store = db()
+        status, prepared = store.status(job_id) or "new", store.prepared_for_job(job_id)
+        prep = prepared.status if prepared else None
+        return {
+            "steps": steps(status, store.latest_tailored_cv(job_id) is not None, prep, store.cover_letter(job_id) is not None),
+            "next": next_step(status, prep),
+            "reason": prepared.reason if prepared else None,
+        }
+
+    templates.env.globals["progress_info"] = progress_info
+
+    def changed(response: Response, job_id: str) -> Response:
+        response.headers["HX-Trigger"] = f"job-changed-{job_id}"  # the progress strip listens and refreshes itself
+        return response
+
     @app.get("/", response_class=HTMLResponse)
-    def today(request: Request, day: str | None = None, all: bool = False):
+    def home(request: Request):
+        store = db()
+        runs = store.list_runs(1)
+        stats = dashboard(store.dashboard_rows(), clock().date(), min_score, store.follow_up_due_ids(clock()))
+        return templates.TemplateResponse(
+            request, "dashboard.html", {**stats, "run": runs[0][1] if runs else None, "min_score": min_score, "active": "dashboard"}
+        )
+
+    @app.get("/today", response_class=HTMLResponse)
+    def today(request: Request, day: str | None = None, all: bool = False, show: str = "all"):
         store = db()
         notice = None
         parsed = None
@@ -116,13 +143,26 @@ def create_app(
         hidden = 0 if all else sum(1 for m in matches if m.evaluation.score < min_score)
         if not all:
             matches = [m for m in matches if m.evaluation.score >= min_score]
+        ready = {m.job_id for m in matches if (p := store.prepared_for_job(m.job_id)) and p.status in ("ready", "filled")}
+        tests = {
+            "all": lambda m: True,
+            "strong": lambda m: m.evaluation.score >= 80,
+            "remote": lambda m: m.job.remote,
+            "ready": lambda m: m.job_id in ready,
+        }
+        show = show if show in tests else "all"
+        filters = [(key, label, sum(1 for m in matches if tests[key](m))) for key, label in TODAY_FILTERS]
+        matches = [m for m in matches if tests[show](m)]
         return templates.TemplateResponse(
             request,
             "today.html",
             {
+                "filters": filters,
+                "show": show,
+                "show_all": all,
                 "day": day,
                 "prev_day": _shift(day, -1) if day else None,
-                "next_day": _shift(day, 1) if day else None,
+                "next_day": _shift(day, 1) if day and day < clock().date() else None,
                 "notice": notice,
                 "hidden": hidden,
                 "min_score": min_score,
@@ -143,6 +183,9 @@ def create_app(
         if store.match(job_id) is None:
             raise HTTPException(404, "unknown job")
         store.set_status(job_id, status, clock())
+        prepared = store.prepared_for_job(job_id)
+        if status == "applied" and prepared is not None:
+            store.update_prepared(prepared.id, clock(), status="applied")
         return templates.TemplateResponse(
             request,
             "_card.html",
@@ -236,9 +279,9 @@ def create_app(
         return FileResponse(fonts[name], media_type="font/woff")
 
     def cv_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
-        return templates.TemplateResponse(
+        return changed(templates.TemplateResponse(
             request, "_cv.html", {"job_id": job_id, "errors": errors or []}, status_code=status_code
-        )
+        ), job_id)
 
     @app.post("/jobs/{job_id}/cv", response_class=HTMLResponse)
     def tailor(request: Request, job_id: str):
@@ -296,9 +339,15 @@ def create_app(
 
     # --- prepared applications --------------------------------------------------
     def prep_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
-        return templates.TemplateResponse(
+        return changed(templates.TemplateResponse(
             request, "_prep.html", {"job_id": job_id, "errors": errors or [], "page": False}, status_code=status_code
-        )
+        ), job_id)
+
+    @app.get("/jobs/{job_id}/progress", response_class=HTMLResponse)
+    def progress(request: Request, job_id: str, page: bool = False):
+        if db().get_job(job_id) is None:
+            raise HTTPException(404, "unknown job")
+        return templates.TemplateResponse(request, "_progress.html", {"job_id": job_id, "page": page})
 
     def prepared_or_404(app_id: int):
         prepared = db().get_prepared(app_id)
@@ -430,7 +479,10 @@ def create_app(
         return job
 
     def cover_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
-        return templates.TemplateResponse(request, "_cover.html", {"job_id": job_id, "errors": errors or []}, status_code=status_code)
+        return changed(
+            templates.TemplateResponse(request, "_cover.html", {"job_id": job_id, "errors": errors or []}, status_code=status_code),
+            job_id,
+        )
 
     @app.post("/jobs/{job_id}/cover", response_class=HTMLResponse)
     def write_cover(request: Request, job_id: str):

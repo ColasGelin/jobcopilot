@@ -1,9 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>{{ job.company }} — {{ job.title }}</h1>
-  <p class="meta">{% if safe_url(job.url) %}<a href="{{ safe_url(job.url) }}" target="_blank" rel="noopener noreferrer">Job page ↗</a>{% endif %}
-    · Nothing is ever submitted for you: Fill form opens the form on your Mac and stops.</p>
-  {% with job_id = job.id, errors = [], page = True %}{% include "_prep.html" %}{% endwith %}
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">{{ job.company }}</p>
+      <h1>{{ job.title }}</h1>
+      <p class="meta">{% if safe_url(job.url) %}<a href="{{ safe_url(job.url) }}" target="_blank" rel="noopener noreferrer">Job page ↗</a> · {% endif %}Nothing is ever submitted for you: Fill form opens the form on your Mac and stops.</p>
+    </div>
+  </div>
+  <div class="panel">
+    {% with job_id = job.id, page = True %}{% include "_progress.html" %}{% endwith %}
+    {% with job_id = job.id, errors = [], page = True %}{% include "_prep.html" %}{% endwith %}
+  </div>
   {% if app.ai_ban_quote %}
     <div class="ai-ban"><b>This posting asks candidates not to use AI.</b> Open answers were left for you to write.
       <blockquote>{{ app.ai_ban_quote }}</blockquote></div>
@@ -12,10 +19,13 @@
   {% set file_keys = app.form.fields | selectattr("kind", "equalto", "file") | map(attribute="key") | list if app.form else [] %}
   <form id="answers-{{ app.id }}" class="answers" onsubmit="return false">
     {% for step, group in answers | groupby("step") %}
-      {% if loop.length > 1 %}<h2>Step {{ step + 1 }}</h2>{% endif %}
-      {% for a in group %}
+      {% if loop.length > 1 %}<h2 class="section">Step {{ step + 1 }}</h2>{% endif %}
+      {% for kind, title in [("open", "Your answers"), ("fact", "From your profile"), ("cv", "Files"), ("leave", "Left for you")] %}
+      {% set items = group | selectattr("kind", "equalto", kind) | list %}
+      {% if items %}<section class="panel"><h2 class="panel-title">{{ title }}</h2>{% endif %}
+      {% for a in items %}
         <div class="answer kind-{{ a.kind }}">
-          <label for="final-{{ a.id }}">{{ a.label or a.field_key }} <span class="badge">{{ {"fact": "Profile", "open": "Your answer", "cv": "CV", "leave": "Left for you"}[a.kind] }}</span></label>
+          <label for="final-{{ a.id }}">{{ a.label or a.field_key }}</label>
           {% set autosave = 'hx-post="/answers/' ~ a.id ~ '" hx-trigger="change, keyup changed delay:1s" hx-swap="none"' %}
           {% if a.kind == "open" %}
             <textarea id="final-{{ a.id }}" name="final-{{ a.id }}" rows="6" {{ autosave | safe }}>{{ a.final }}</textarea>
@@ -31,6 +41,8 @@
           {% endif %}
           {% if a.problems %}<ul class="errors">{% for p in a.problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
         </div>
+      {% endfor %}
+      {% if items %}</section>{% endif %}
       {% endfor %}
     {% endfor %}
   </form>

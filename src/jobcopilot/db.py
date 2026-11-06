@@ -441,6 +441,17 @@ class DB:
         )
         return Match(job_id=job_id, job=job, evaluation=evaluation, draft=self.latest_draft(job_id), status=self.status(job_id) or "new")
 
+    def dashboard_rows(self) -> list[dict]:
+        """One row per scored job, with what the Dashboard page counts."""
+        rows = self.conn.execute(
+            "SELECT j.id, j.company, j.title, j.source, substr(j.first_seen_at, 1, 10) AS day,"
+            " (SELECT e.score FROM evaluations e WHERE e.job_id = j.id ORDER BY e.id DESC LIMIT 1) AS score,"
+            " coalesce(a.status, 'new') AS status, a.applied_at, p.status AS prep, p.reason"
+            " FROM jobs j LEFT JOIN applications a ON a.job_id = j.id LEFT JOIN prepared_apps p ON p.job_id = j.id"
+            " WHERE EXISTS (SELECT 1 FROM evaluations e WHERE e.job_id = j.id)"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def latest_match_day(self) -> date | None:
         row = self.conn.execute(
             "SELECT max(substr(j.first_seen_at, 1, 10)) FROM jobs j WHERE EXISTS (SELECT 1 FROM evaluations e WHERE e.job_id = j.id)"

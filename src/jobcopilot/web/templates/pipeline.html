@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block main_class %}wide{% endblock %}
 {% block content %}
-  <h1>Pipeline</h1>
+  <div class="page-head"><div><p class="eyebrow">Tracking</p><h1>Pipeline</h1></div></div>
   {% if total == 0 %}
-    <p class="empty">Nothing here yet. Use Shortlist / Applied on the Today page to track applications.</p>
+    <p class="empty">Nothing here yet. Set an offer's status on the Today page to track it.</p>
   {% else %}
     <div class="columns">
       {% for status, items in groups.items() %}
-        <section>
+        <section class="column">
           <h2>{{ status | capitalize }} ({{ items | length }})</h2>
           {% for m in items %}{% with compact=true %}{% include "_card.html" %}{% endwith %}{% else %}<p class="empty">—</p>{% endfor %}
         </section>

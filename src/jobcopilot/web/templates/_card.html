@@ -1,39 +1,53 @@
-{% set e = m.evaluation %}
+{% set e = m.evaluation %}{% set band = "strong" if e.score >= 80 else "good" if e.score >= 60 else "muted" %}
 <article class="card{% if compact %} compact{% endif %} status-{{ m.status }}{% if m.job_id in follow_ups %} follow-up{% endif %}" id="job-{{ m.job_id }}">
   <div class="card-head">
-    <span class="score {% if e.score >= 80 %}strong{% elif e.score >= 60 %}good{% else %}muted{% endif %}">{{ e.score }}</span>
-    <div>
-      <h2>{{ m.job.company }} — {{ m.job.title }}</h2>
-      <p class="meta">
-        {% if not compact %}{{ m.job.location or "Location not stated" }}{% if m.job.remote %} · remote{% endif %}
-        · {{ m.job.salary_text or "Salary not stated" }} · {% endif %}{% if safe_url(m.job.url) %}<a href="{{ safe_url(m.job.url) }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>{% else %}{{ source_name(m.job.source) }}{% endif %}
-      </p>
+    <span class="avatar" aria-hidden="true">{{ (m.job.company or "?")[:1] | upper }}</span>
+    <div class="card-title">
+      <p class="eyebrow">{{ m.job.company }}</p>
+      <h2>{{ m.job.title }}</h2>
     </div>
-    <span class="status">{{ m.status }}{% if m.job_id in follow_ups %} · Follow up{% endif %}</span>
+    <span class="score {{ band }}" title="Match score: {{ e.score }} out of 100">
+      <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.5" pathLength="100"/><circle class="value" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="{{ e.score }} 100"/></svg>
+      <b>{{ e.score }}</b>
+    </span>
   </div>
-  {% if not compact %}
-  {% if e.fit_reasons %}<p><b>Fit:</b> {{ e.fit_reasons }}</p>{% endif %}
-  {% if e.gaps %}<p><b>Gaps:</b> {{ e.gaps }}</p>{% endif %}
+  <p class="tags">
+    {% if not compact %}<span class="tag">{{ m.job.location or "Location not stated" }}</span>
+    {% if m.job.remote %}<span class="tag accent">Remote</span>{% endif %}
+    <span class="tag">{{ m.job.salary_text or "Salary not stated" }}</span>{% endif %}
+    {% if m.job_id in follow_ups %}<span class="tag warn-tag">Follow up</span>{% endif %}
+    {% if safe_url(m.job.url) %}<a class="tag" href="{{ safe_url(m.job.url) }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>{% else %}<span class="tag">{{ source_name(m.job.source) }}</span>{% endif %}
+  </p>
+  {% if not compact and (e.fit_reasons or e.gaps) %}
+  <div class="fit">
+    {% if e.fit_reasons %}<div class="fit-col good-col"><h3>Why it fits</h3><p>{{ e.fit_reasons }}</p></div>{% endif %}
+    {% if e.gaps %}<div class="fit-col gap-col"><h3>Gaps</h3><p>{{ e.gaps }}</p></div>{% endif %}
+  </div>
   {% endif %}
-  <div class="actions">
-    {% for s, label in [("shortlisted", "Shortlist"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skip"), ("unavailable", "Unavailable")] %}
-      <button hx-post="/jobs/{{ m.job_id }}/status{% if compact %}?compact=1{% endif %}" hx-vals='{"status": "{{ s }}"}' hx-target="closest article" hx-swap="outerHTML"
-              {% if m.status == s %}disabled{% endif %}>{{ label }}</button>
-    {% endfor %}
-  </div>
-  {% if not compact %}{% with job_id = m.job_id, errors = [] %}{% include "_cv.html" %}{% include "_prep.html" %}{% endwith %}{% endif %}
-  {% if compact %}
-  {% elif m.draft %}
-    <details>
-      <summary>Drafts</summary>
-      <h3>CV tweaks</h3>
-      <ul>{% for t in m.draft.cv_tweaks %}<li>{{ t }}</li>{% endfor %}</ul>
-      <h3>Cover note <button class="copy" data-copy="cover-{{ m.job_id }}">Copy</button></h3>
-      <p class="draft" id="cover-{{ m.job_id }}">{{ m.draft.cover_note }}</p>
-      <h3>Outreach → {{ m.draft.contact_hint }} <button class="copy" data-copy="outreach-{{ m.job_id }}">Copy</button></h3>
-      <p class="draft" id="outreach-{{ m.job_id }}">{{ m.draft.outreach_message }}</p>
+  {% if not compact %}{% with job_id = m.job_id, page = False %}{% include "_progress.html" %}{% endwith %}{% endif %}
+  <div class="card-foot">
+    <label class="status-menu"><span class="sr-only">Status</span>
+      <select name="status" hx-post="/jobs/{{ m.job_id }}/status{% if compact %}?compact=1{% endif %}" hx-target="closest article" hx-swap="outerHTML">
+        {% for s, label in [("new", "New"), ("shortlisted", "Shortlisted"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skipped"), ("unavailable", "Unavailable")] %}
+          <option value="{{ s }}"{% if m.status == s %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if not compact %}
+    <details class="work">
+      <summary>CV, links and drafts</summary>
+      {% with job_id = m.job_id, errors = [] %}{% include "_cv.html" %}{% include "_prep.html" %}{% endwith %}
+      {% if m.draft %}
+        <h3>CV tweaks</h3>
+        <ul>{% for t in m.draft.cv_tweaks %}<li>{{ t }}</li>{% endfor %}</ul>
+        <h3>Cover note <button class="copy" data-copy="cover-{{ m.job_id }}">Copy</button></h3>
+        <p class="draft" id="cover-{{ m.job_id }}">{{ m.draft.cover_note }}</p>
+        <h3>Outreach → {{ m.draft.contact_hint }} <button class="copy" data-copy="outreach-{{ m.job_id }}">Copy</button></h3>
+        <p class="draft" id="outreach-{{ m.job_id }}">{{ m.draft.outreach_message }}</p>
+      {% else %}
+        <p class="muted-text">No draft</p>
+      {% endif %}
     </details>
-  {% else %}
-    <p class="muted-text">No draft</p>
-  {% endif %}
+    {% endif %}
+  </div>
 </article>

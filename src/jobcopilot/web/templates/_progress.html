@@ -1,0 +1,23 @@
+{% set p = progress_info(job_id) %}
+<div class="progress" id="progress-{{ job_id }}" hx-get="/jobs/{{ job_id }}/progress{% if page %}?page=1{% endif %}"
+     hx-trigger="job-changed-{{ job_id }} from:body" hx-swap="outerHTML">
+  <ol class="steps">
+    {% for s in p.steps %}
+      <li class="step {{ s.state }}"{% if s.state == "attention" and p.reason %} title="{{ p.reason }}"{% endif %}>
+        <span class="dot" aria-hidden="true">{% if s.state == "done" %}✓{% elif s.state == "attention" %}!{% endif %}</span>{{ s.label }}
+        <span class="sr-only">({{ {"done": "done", "attention": "needs you", "todo": "to do"}[s.state] }})</span>
+      </li>
+    {% endfor %}
+  </ol>
+  {% if not page %}
+    {% if p.next == "prepare" %}
+      <span class="htmx-indicator muted-text" id="next-ind-{{ job_id }}">Reading the form and drafting… (1–2 min)</span>
+      <button class="primary" hx-post="/jobs/{{ job_id }}/prepare" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML"
+              hx-indicator="#next-ind-{{ job_id }}" hx-disabled-elt="this">Prepare application</button>
+    {% elif p.next == "review" %}
+      <a class="button primary" href="/jobs/{{ job_id }}/application">Review application</a>
+    {% elif p.next == "apply" %}
+      <button class="primary" hx-post="/jobs/{{ job_id }}/status" hx-vals='{"status": "applied"}' hx-target="closest article" hx-swap="outerHTML">Mark applied</button>
+    {% endif %}
+  {% endif %}
+</div>

@@ -1,6 +1,6 @@
 {% set letter = cover_info(job_id) %}
-<section class="cover-block" id="cover-{{ job_id }}">
-  <h2>Cover letter</h2>
+<section class="panel cover-block" id="cover-{{ job_id }}">
+  <h2 class="panel-title">Cover letter</h2>
   {% if letter %}
     <textarea name="final" rows="16" hx-post="/jobs/{{ job_id }}/cover/final" hx-trigger="change, keyup changed delay:1s" hx-swap="none">{{ letter.final }}</textarea>
     <span class="muted-text">{{ letter.final.split() | length }} words</span>

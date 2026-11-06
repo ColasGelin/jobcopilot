@@ -60,7 +60,7 @@ def env(tmp_path):
 
 def test_today_has_add_by_link_box(env):
     c, *_ = env
-    assert 'hx-post="/jobs/add"' in c.get("/").text
+    assert 'hx-post="/jobs/add"' in c.get("/today").text
 
 
 def test_add_redirects_to_the_application(env):

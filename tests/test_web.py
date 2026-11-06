@@ -34,13 +34,13 @@ def client(db_path, now=NOW):
 def test_today_shows_matches_sorted(db_path):
     low, high = make_job(1, company="LowCo"), make_job(2, company="HighCo")
     seed(db_path, [(low, 61), (high, 90)], draft_for=[high])
-    body = client(db_path).get("/").text
+    body = client(db_path).get("/today").text
     assert body.index("HighCo") < body.index("LowCo")
     assert "COVER HighCo" in body and "No draft" in body
 
 
 def test_today_empty_state(db_path):
-    r = client(db_path).get("/")
+    r = client(db_path).get("/today")
     assert r.status_code == 200 and "No matches yet" in r.text
 
 
@@ -48,7 +48,7 @@ def test_today_day_param(db_path):
     old, new = make_job(1, company="OldCo"), make_job(2, company="NewCo")
     seed(db_path, [(old, 70)], seen_at=NOW - timedelta(days=1))
     seed(db_path, [(new, 70)])
-    body = client(db_path).get("/?day=2026-11-01").text
+    body = client(db_path).get("/today?day=2026-11-01").text
     assert "OldCo" in body and "NewCo" not in body
 
 
@@ -75,7 +75,7 @@ def test_status_invalid_400(db_path):
 def test_feed_content_is_escaped(db_path):
     j = make_job(1, title="<script>alert(1)</script>")
     seed(db_path, [(j, 80)])
-    body = client(db_path).get("/").text
+    body = client(db_path).get("/today").text
     assert "&lt;script&gt;alert(1)" in body and "<script>alert(1)" not in body
 
 
@@ -129,7 +129,7 @@ HX = {"HX-Request": "true"}
 def test_javascript_url_is_not_rendered_as_link(db_path):
     j = make_job(1, url="javascript:alert(1)")
     seed(db_path, [(j, 80)])
-    body = client(db_path).get("/").text
+    body = client(db_path).get("/today").text
     assert 'href="javascript:' not in body
 
 
@@ -155,16 +155,17 @@ def test_bad_day_param_shows_page(db_path, day):
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
 
 
-def test_offer_button_exists(db_path):
+def test_status_menu_offers_every_status(db_path):
     j = make_job(1)
     seed(db_path, [(j, 80)])
-    assert '"status": "offer"' in client(db_path).get("/").text
+    body = client(db_path).get("/today").text
+    assert 'name="status"' in body and 'value="offer"' in body
 
 
 def test_today_hides_jobs_below_min_score(db_path):
     good, weak = make_job(1, company="GoodCo"), make_job(2, company="WeakCo")
     seed(db_path, [(good, 60), (weak, 59)])
-    body = client(db_path).get("/").text
+    body = client(db_path).get("/today").text
     assert "GoodCo" in body and "WeakCo" not in body
     assert "Show 1 lower-scored job" in body
 
@@ -172,14 +173,14 @@ def test_today_hides_jobs_below_min_score(db_path):
 def test_today_all_param_shows_hidden_jobs(db_path):
     weak = make_job(2, company="WeakCo")
     seed(db_path, [(weak, 40)])
-    assert "WeakCo" in client(db_path).get("/?all=1").text
+    assert "WeakCo" in client(db_path).get("/today?all=1").text
 
 
 def test_min_score_is_configurable(db_path):
     j = make_job(1, company="MidCo")
     seed(db_path, [(j, 70)])
     app = create_app(db_path, clock=lambda: NOW, min_score=75)
-    assert "MidCo" not in TestClient(app, base_url="http://localhost").get("/").text
+    assert "MidCo" not in TestClient(app, base_url="http://localhost").get("/today").text
 
 
 # --- companies to check ------------------------------------------------------
@@ -256,7 +257,7 @@ def test_companies_empty_state(db_path):
 
 def test_dashboard_has_its_own_tab_icon(db_path):
     c = client(db_path)
-    assert '<link rel="icon" href="/static/favicon.svg"' in c.get("/").text
+    assert '<link rel="icon" href="/static/favicon.svg"' in c.get("/today").text
     icon = c.get("/static/favicon.svg")
     assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/svg+xml")
 
@@ -267,9 +268,9 @@ def test_unavailable_button_marks_job(db_path):
     job = make_job(1)
     seed(db_path, [(job, 80)])
     c = client(db_path)
-    body = c.get("/").text
+    body = c.get("/today").text
     job_id = job.id
-    assert '"status": "unavailable"' in body and ">Unavailable<" in body
+    assert 'value="unavailable"' in body and ">Unavailable<" in body
     r = c.post(f"/jobs/{job_id}/status", data={"status": "unavailable"}, headers={"HX-Request": "true"})
     assert r.status_code == 200 and "status-unavailable" in r.text
     assert DB(db_path).status(job_id) == "unavailable"

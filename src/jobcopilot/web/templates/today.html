@@ -1,13 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Offers</p>
+      <h1>{% if day %}Matches · {{ day }}{% else %}Today{% endif %}</h1>
+    </div>
+    {% if day %}
+      <div class="day-nav">
+        {% if prev_day %}<a class="button" href="/today?day={{ prev_day }}">← {{ prev_day }}</a>{% endif %}
+        {% if next_day %}<a class="button" href="/today?day={{ next_day }}">{{ next_day }} →</a>{% endif %}
+      </div>
+    {% endif %}
+  </div>
   {% with url = "", error = None %}{% include "_add.html" %}{% endwith %}
   {% if notice %}<p class="empty">{{ notice }}</p>{% endif %}
-  {% if day %}
-    <div class="day-nav">
-      {% if prev_day %}<a href="/?day={{ prev_day }}">← {{ prev_day }}</a>{% else %}<span></span>{% endif %}
-      <h1>Matches · {{ day }}</h1>
-      {% if next_day %}<a href="/?day={{ next_day }}">{{ next_day }} →</a>{% else %}<span></span>{% endif %}
-    </div>
+  {% if filters and day %}
+    <nav class="filters" aria-label="Filter offers">
+      {% for key, label, count in filters %}
+        <a href="/today?day={{ day }}{% if show_all %}&all=1{% endif %}{% if key != 'all' %}&show={{ key }}{% endif %}"{% if show == key %} aria-current="true"{% endif %}>{{ label }} <span>{{ count }}</span></a>
+      {% endfor %}
+    </nav>
   {% endif %}
   {% for m in matches %}
     {% include "_card.html" %}
@@ -15,6 +27,6 @@
     <p class="empty">No matches{% if hidden %} scoring {{ min_score }}+{% endif %} yet{% if day %} for {{ day }}{% endif %}. They appear after the daily run.</p>
   {% endfor %}
   {% if hidden %}
-    <p class="empty"><a href="/?day={{ day }}&all=1">Show {{ hidden }} lower-scored job{{ "s" if hidden > 1 }} (under {{ min_score }})</a></p>
+    <p class="empty"><a href="/today?day={{ day }}&all=1">Show {{ hidden }} lower-scored job{{ "s" if hidden > 1 }} (under {{ min_score }})</a></p>
   {% endif %}
 {% endblock %}

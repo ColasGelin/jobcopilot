@@ -1,6 +1,6 @@
 {% set info = cv_info(job_id) %}{% set bank_problem = bank_error() %}
 <div class="cv-block" id="cv-{{ job_id }}">
-  <b>CV for this job:</b>
+  <b>CV for this job</b>
   {% if info %}
     {% set content, pages, created = info %}
     <span class="muted-text">{{ content.language | upper }} · {{ created.strftime("%d %b %H:%M") }} UTC</span>

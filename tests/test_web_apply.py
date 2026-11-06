@@ -67,10 +67,10 @@ def client(tmp, preparer=True, htmx=True):
 def test_card_offers_prepare_now_then_shows_badge(home):
     tmp, job, db = home
     c, fake = client(tmp)
-    assert f'hx-post="/jobs/{job.id}/prepare"' in c.get("/").text
+    assert f'hx-post="/jobs/{job.id}/prepare"' in c.get("/today").text
     r = c.post(f"/jobs/{job.id}/prepare")
     assert r.status_code == 200 and "Application ready" in r.text and fake.calls == [job.id]
-    assert f'href="/jobs/{job.id}/application"' in c.get("/").text
+    assert f'href="/jobs/{job.id}/application"' in c.get("/today").text
 
 
 def test_prepare_now_without_preparer(home):
@@ -202,7 +202,7 @@ def link_client(tmp):
 def test_links_form_on_card_and_page(home):
     tmp, job, db = home
     c, fake = link_client(tmp)
-    assert f'hx-post="/jobs/{job.id}/links"' in c.get("/").text
+    assert f'hx-post="/jobs/{job.id}/links"' in c.get("/today").text
     r = c.post(f"/jobs/{job.id}/links", data={"apply_url": "https://jobs.lever.co/acme/1", "role_url": "https://acme.com/role"})
     assert r.status_code == 200 and "Application ready" in r.text
     assert fake.calls == [(job.id, "https://jobs.lever.co/acme/1", "https://acme.com/role")]
