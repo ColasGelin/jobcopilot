@@ -1,4 +1,4 @@
-"""Command-line entry point: `jobcopilot run`, `serve`, `cv`, `agent`, `import-legacy`, `install-schedule`, `uninstall-schedule`."""
+"""Command-line entry point: `jobcopilot run`, `serve`, `cv`, `agent`, `import-legacy`, `install-schedule`, `uninstall-schedule`, `eval run|status|promote`."""
 
 from __future__ import annotations
 
@@ -95,6 +95,84 @@ def run(ctx: typer.Context):
     raise typer.Exit(_run(ctx.obj))
 
 
+# --- evaluation of the AI features --------------------------------------------------
+eval_app = typer.Typer(help="Evaluate the AI features against a test set and a saved baseline.", no_args_is_help=True)
+app.add_typer(eval_app, name="eval")
+
+
+def _eval_store(home: Path):
+    from jobcopilot.evals.store import EvalStore
+
+    return EvalStore(load_settings(home / "config.yaml").data_dir / "evals")
+
+
+def _eval_run(home: Path, tasks: list[str], limit: int | None):
+    from jobcopilot.evals.runner import run_evals
+
+    settings = load_settings(home / "config.yaml")
+    return run_evals(tasks, profile=load_profile(home / "profile.yaml"), settings=settings, db=DB(settings.db_path),
+                     llm=ClaudeCodeClient(timeout_s=settings.llm.timeout_s), now=datetime.now().astimezone(), limit=limit)
+
+
+def _print_report(r: dict) -> None:
+    typer.echo(f"{r['verdict'].replace('_', ' ').upper()}  (run {r['run'].id}" + (f", baseline {r['baseline'].id})" if r["baseline"] else ")"))
+    for row in r["rows"]:
+        if row["error"]:
+            typer.echo(f"  {row['name']}: skipped. {row['error']}")
+            continue
+        change = "" if row["change"] is None else f"  {row['change'] * 100:+.0f} pts vs baseline ({row['verdict']})"
+        typer.echo(f"  {row['name']}: {row['value'] * 100:.0f}% of {row['n']} cases "
+                   f"[{row['ci_low'] * 100:.0f}-{row['ci_high'] * 100:.0f}%]{change}  {row['calls']} calls, {row['seconds']:.0f}s")
+    for f in r["failures"][:15]:
+        c = f["case"]
+        typer.echo(f"  FAIL {f['task']}: {c.label}: expected {c.expected}, got {c.actual}")
+    typer.echo(r["next"])
+
+
+@eval_app.command("run")
+def eval_run(
+    ctx: typer.Context,
+    tasks: str = typer.Option("scoring,decisions,cv", help="Comma-separated: scoring, decisions, cv."),
+    limit: int = typer.Option(None, help="Cases per task, for a quick check."),
+    gate: bool = typer.Option(False, help="Exit with code 1 when a task got clearly worse than the baseline."),
+):
+    """Run the evaluation, save it, and compare it with the baseline."""
+    from jobcopilot.evals.store import report
+
+    store = _eval_store(ctx.obj)
+    result = _eval_run(ctx.obj, [t.strip() for t in tasks.split(",") if t.strip()], limit)
+    store.save(result)
+    r = report(result, store.baseline())
+    _print_report(r)
+    if gate and r["verdict"] == "blocked":
+        raise typer.Exit(1)
+
+
+@eval_app.command("status")
+def eval_status(ctx: typer.Context):
+    """Show the latest evaluation run against the baseline."""
+    from jobcopilot.evals.store import report
+
+    store = _eval_store(ctx.obj)
+    latest = store.latest()
+    if latest is None:
+        typer.echo("No evaluation run yet. Start one with: jobcopilot eval run")
+        return
+    _print_report(report(latest, store.baseline()))
+
+
+@eval_app.command("promote")
+def eval_promote(ctx: typer.Context, run_id: str = typer.Argument(None, help="Run to promote; the latest when omitted.")):
+    """Make a run the baseline that later runs are compared with."""
+    store = _eval_store(ctx.obj)
+    run_id = run_id or (store.latest().id if store.latest() else None)
+    if run_id is None or store.load(run_id) is None:
+        typer.echo("No such run.")
+        raise typer.Exit(1)
+    store.promote(run_id)
+    typer.echo(f"Baseline is now run {run_id}.")
+
+
 def _parse_time(value: str) -> time:
     try:
         return time.fromisoformat(value)
@@ -142,6 +220,8 @@ def serve(
         llm_factory=lambda: ClaudeCodeClient(timeout_s=settings.llm.timeout_s),
         draft_model=settings.llm.draft_model,
         preparer_factory=_preparer_factory(ctx.obj, settings),
+        evals_dir=settings.data_dir / "evals",
+        eval_runner=(lambda tasks: _eval_run(ctx.obj, tasks, None)) if (ctx.obj / "profile.yaml").exists() else None,
     )
     uvicorn.run(app_, host=host, port=port)
 

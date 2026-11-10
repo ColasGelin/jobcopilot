@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block main_class %}wide{% endblock %}
+{% macro pct(v) %}{{ (v * 100) | round | int }}%{% endmacro %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Quality of the AI</p>
+      <h1>Evals</h1>
+    </div>
+    {% if can_run and not running %}
+      <form hx-post="/evals/run" hx-swap="none" class="run-form">
+        <select name="tasks" aria-label="What to run">
+          <option value="scoring,decisions,cv">Everything (about 5 min)</option>
+          <option value="scoring,decisions">Scoring only (about 1 min)</option>
+          <option value="cv">Tailored CV only</option>
+        </select>
+        <button class="primary">Run now</button>
+      </form>
+    {% endif %}
+  </div>
+  {% if running %}
+    <div class="alert" role="status" hx-get="/evals" hx-trigger="every 5s" hx-target="body"><b>Running…</b> This page refreshes when it finishes.</div>
+  {% endif %}
+  {% if error %}<div class="alert" role="alert"><b>{{ error }}</b></div>{% endif %}
+  {% if not r %}
+    <div class="panel">
+      <h2 class="panel-title">No evaluation run yet</h2>
+      <p class="meta">An evaluation runs the AI on a fixed set of job postings and checks the results, so a prompt or model change that makes things worse is caught before you rely on it.</p>
+      <p>{% if can_run %}Click <b>Run now</b>, or on the server:{% else %}On the server:{% endif %} <code>jobcopilot eval run</code></p>
+    </div>
+  {% else %}
+    <div class="verdict {{ r.verdict }}">
+      <strong>{{ {"safe": "Safe", "blocked": "Blocked", "no_baseline": "No baseline yet"}[r.verdict] }}</strong>
+      <p>{{ r.next }}</p>
+      {% if not r.is_baseline and r.verdict != "blocked" %}
+        <button hx-post="/evals/promote/{{ r.run.id }}" hx-swap="none" hx-confirm="Make this run the baseline that later runs are compared with?">Promote to baseline</button>
+      {% endif %}
+    </div>
+    <p class="meta list-note">Run {{ r.run.started_at.strftime("%d %b, %H:%M") }}{% if r.baseline and not r.is_baseline %} · compared with the baseline of {{ r.baseline.started_at.strftime("%d %b, %H:%M") }}{% endif %}.
+      A change counts only when it is clearly outside the noise (95% interval on the same cases).</p>
+    <div class="panel table-panel">
+      <table class="applied evals">
+        <thead><tr><th>Feature</th><th>Result</th><th>Likely range</th><th>vs baseline</th><th>Cases</th><th>Cost</th><th>Model · prompt</th></tr></thead>
+        <tbody>
+        {% for row in r.rows %}
+          <tr>
+            <td><b>{{ row.name }}</b><br><span class="muted-text">{{ row.question }}</span></td>
+            {% if row.error %}
+              <td colspan="6" class="muted-text">Not run. {{ row.error }}</td>
+            {% else %}
+              <td><span class="meter" role="img" aria-label="{{ pct(row.value) }}"><span style="width: {{ (row.value * 100) | round(1) }}%"></span></span> <b>{{ pct(row.value) }}</b></td>
+              <td>{{ pct(row.ci_low) }} to {{ pct(row.ci_high) }}</td>
+              <td>{% if row.change is none %}<span class="muted-text">—</span>{% else %}<span class="badge change-{{ row.verdict }}">{{ "+" if row.change > 0 else "−" if row.change < 0 else "" }}{{ (row.change | abs * 100) | round | int }} pts · {{ row.verdict }}</span>{% endif %}{% if row.prompt_changed %} <span class="tag">prompt changed</span>{% endif %}</td>
+              <td>{{ row.n }}</td>
+              <td>{{ row.calls }} call{{ "s" if row.calls != 1 }} · {{ row.seconds | round | int }} s</td>
+              <td class="muted-text">{{ row.model }} · {{ row.prompt }}</td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <section class="panel">
+      <h2 class="panel-title">Failing cases{% if r.failures %} <span>{{ r.failures | length }}</span>{% endif %}</h2>
+      {% for f in r.failures %}
+        <div class="failure">
+          <b>{{ f.case.label }}</b> <span class="tag">{{ f.task }}</span>
+          <p>Expected <b>{{ f.case.expected }}</b>, got <b>{{ f.case.actual }}</b>{% if f.case.note %}<br><span class="muted-text">{{ f.case.note }}</span>{% endif %}</p>
+        </div>
+      {% else %}
+        <p class="empty">Every case passed.</p>
+      {% endfor %}
+    </section>
+    <div class="dash-grid">
+      <section class="panel span-2">
+        <h2 class="panel-title">The flow</h2>
+        <ol class="flow">
+          <li><b>Change</b> a prompt, a model or the scoring rules.</li>
+          <li><b>Run</b> the evaluation: here, or <code>jobcopilot eval run --gate</code> (exits 1 when blocked).</li>
+          <li><b>Read</b> the verdict, then the failing cases.</li>
+          <li><b>Promote</b> the run to baseline when it is better; undo the change when it is blocked.</li>
+          <li><b>Keep using</b> the dashboard: every job you apply to or skip becomes a new test case.</li>
+        </ol>
+      </section>
+      <section class="panel">
+        <h2 class="panel-title">History</h2>
+        <ul class="history">
+          {% for run in runs %}
+            <li>{{ run.started_at.strftime("%d %b, %H:%M") }}{% if r.baseline and run.id == r.baseline.id %} <span class="tag accent">baseline</span>{% endif %}
+              <span class="muted-text">{% for t in run.tasks if not t.error %}{{ t.task }} {{ pct(t.value) }}{% if not loop.last %} · {% endif %}{% endfor %}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+  {% endif %}
+{% endblock %}

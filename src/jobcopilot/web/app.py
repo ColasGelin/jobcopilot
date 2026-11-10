@@ -21,6 +21,8 @@ from jobcopilot.cv.content import CvContent, main_content
 from jobcopilot.cv.render import FONTS_DIR, render_html, render_pdf
 from jobcopilot.cv.tailor import TAILOR_PROMPT_VERSION, TailorError, cv_filename, download_name, tailor_cv
 from jobcopilot.db import DB
+from jobcopilot.evals.store import EvalStore
+from jobcopilot.evals.store import report as eval_report
 from jobcopilot.llm import LLMClient, LLMError
 from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
@@ -67,6 +69,8 @@ def create_app(
     llm_factory: Callable[[], LLMClient] | None = None,
     draft_model: str = "sonnet",
     preparer_factory: Callable[[], object] | None = None,  # builds a Preparer per request (own DB connection)
+    evals_dir: Path | None = None,
+    eval_runner: Callable[[list[str]], object] | None = None,  # runs the evaluation tasks, returns an EvalRun
 ) -> FastAPI:
     app = FastAPI(title="jobcopilot", docs_url=None, redoc_url=None, openapi_url=None)
     # No auth by design, so: refuse foreign Host headers (DNS rebinding) ...
@@ -154,6 +158,59 @@ def create_app(
     @app.get("/applied", response_class=HTMLResponse)
     def applied(request: Request):
         return templates.TemplateResponse(request, "applied.html", {"rows": db().applications_list(), "now": clock(), "active": "applied"})
+
+    # --- evaluation of the AI features ------------------------------------------
+    app.state.eval_thread = None
+    app.state.eval_error = None
+
+    def eval_store() -> EvalStore | None:
+        return EvalStore(evals_dir) if evals_dir is not None else None
+
+    def eval_running() -> bool:
+        return app.state.eval_thread is not None and app.state.eval_thread.is_alive()
+
+    @app.get("/evals", response_class=HTMLResponse)
+    def evals_page(request: Request):
+        store = eval_store()
+        runs = store.list() if store else []
+        baseline = store.baseline() if store else None
+        return templates.TemplateResponse(request, "evals.html", {
+            "r": eval_report(runs[0], baseline) if runs else None, "runs": runs[:10], "running": eval_running(),
+            "error": app.state.eval_error, "can_run": eval_runner is not None, "active": "evals",
+        })
+
+    @app.post("/evals/run", response_class=HTMLResponse)
+    def evals_run(request: Request, tasks: str = Form("scoring,decisions,cv")):
+        require_htmx(request)
+        store = eval_store()
+        if eval_runner is None or store is None:
+            raise HTTPException(409, "evaluation is not configured")
+        if not eval_running():
+            names = [t.strip() for t in tasks.split(",") if t.strip()]
+
+            def work():
+                try:
+                    store.save(eval_runner(names))
+                    app.state.eval_error = None
+                except Exception as e:  # shown on the page; the last saved run stays
+                    app.state.eval_error = f"The run failed: {str(e)[:300] or repr(e)}"
+
+            app.state.eval_error = None
+            app.state.eval_thread = threading.Thread(target=work, daemon=True)
+            app.state.eval_thread.start()
+        return Response(status_code=200, headers={"HX-Redirect": "/evals"})
+
+    @app.post("/evals/promote/{run_id}", response_class=HTMLResponse)
+    def evals_promote(request: Request, run_id: str):
+        require_htmx(request)
+        store = eval_store()
+        try:
+            if store is None:
+                raise KeyError(run_id)
+            store.promote(run_id)
+        except KeyError:
+            raise HTTPException(404, "unknown run")
+        return Response(status_code=200, headers={"HX-Redirect": "/evals"})
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request):
