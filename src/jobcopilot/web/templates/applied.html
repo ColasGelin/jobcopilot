@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Tracking</p>
+      <h1>Applied</h1>
+    </div>
+    {% if rows %}<p class="run-line">{{ rows | length }} application{{ "s" if rows | length != 1 }}</p>{% endif %}
+  </div>
+  {% if not rows %}
+    <p class="empty">No applications yet. Set an offer to Applied, or use Mark applied on its application page.</p>
+  {% else %}
+    <div class="panel table-panel">
+      <table class="applied">
+        <thead><tr><th>Company</th><th>Role</th><th>Applied</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          {% set due = r.status == "applied" and r.next_follow_up_at and r.next_follow_up_at <= now %}
+          <tr>
+            <td><b>{{ r.company }}</b></td>
+            <td>{% if safe_url(r.url) %}<a href="{{ safe_url(r.url) }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</td>
+            <td>{% if r.applied_at %}{% set days = (now - r.applied_at).days %}{{ r.applied_at.strftime("%d %b") }} <span class="muted-text">· {{ "today" if days == 0 else "1 day ago" if days == 1 else days ~ " days ago" }}</span>{% else %}—{% endif %}</td>
+            <td><span class="badge status-{{ r.status }}">{{ r.status | capitalize }}</span>{% if due %} <span class="tag warn-tag">Follow up</span>{% endif %}</td>
+            <td>{% if r.prep %}<a href="/jobs/{{ r.id }}/application">Answers</a>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

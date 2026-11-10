@@ -40,7 +40,7 @@
         {% else %}
           <p class="empty">Nothing waiting on you.</p>
         {% endfor %}
-        {% if todo.total > todo["items"] | length %}<p class="empty"><a href="/today">See more on Today</a></p>{% endif %}
+        {% if todo.total > todo["items"] | length %}<p class="empty"><a href="/offers">See all open offers</a></p>{% endif %}
       </section>
       <section class="panel span-2">
         <h2 class="panel-title">Offers found per day <small>last {{ days | length }} days</small></h2>

@@ -452,6 +452,27 @@ class DB:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def open_job_ids(self, min_score: int) -> list[str]:
+        """Scored jobs still waiting for a decision (new or shortlisted), best score first, then newest."""
+        rows = self.conn.execute(
+            "SELECT j.id FROM jobs j JOIN applications a ON a.job_id = j.id"
+            " JOIN (SELECT job_id, score FROM evaluations e WHERE e.id = (SELECT max(id) FROM evaluations WHERE job_id = e.job_id)) s"
+            " ON s.job_id = j.id WHERE a.status IN ('new', 'shortlisted') AND s.score >= ?"
+            " ORDER BY s.score DESC, j.first_seen_at DESC",
+            (min_score,),
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def applications_list(self) -> list[dict]:
+        """Jobs the candidate applied to, newest application first."""
+        rows = self.conn.execute(
+            "SELECT j.id, j.company, j.title, j.url, a.status, a.applied_at, a.next_follow_up_at, p.status AS prep"
+            " FROM applications a JOIN jobs j ON j.id = a.job_id LEFT JOIN prepared_apps p ON p.job_id = j.id"
+            " WHERE a.applied_at IS NOT NULL OR a.status IN ('applied', 'interview', 'offer')"
+            " ORDER BY coalesce(a.applied_at, a.updated_at) DESC"
+        ).fetchall()
+        return [dict(r) | {"applied_at": _dt(r["applied_at"]), "next_follow_up_at": _dt(r["next_follow_up_at"])} for r in rows]
+
     def latest_match_day(self) -> date | None:
         row = self.conn.execute(
             "SELECT max(substr(j.first_seen_at, 1, 10)) FROM jobs j WHERE EXISTS (SELECT 1 FROM evaluations e WHERE e.job_id = j.id)"

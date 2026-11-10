@@ -24,6 +24,7 @@ from jobcopilot.db import DB
 from jobcopilot.llm import LLMClient, LLMError
 from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
+from jobcopilot.text import normalize
 from jobcopilot.web.insights import TODAY_FILTERS, dashboard, next_step, run_warning, steps
 
 HERE = Path(__file__).parent
@@ -46,6 +47,9 @@ def _shift(day: date, days: int) -> date | None:
         return day + timedelta(days=days)
     except OverflowError:
         return None
+
+
+OFFERS_SHOWN = 30
 
 
 def now_local() -> datetime:
@@ -119,6 +123,37 @@ def create_app(
         response.headers["HX-Trigger"] = f"job-changed-{job_id}"  # the progress strip listens and refreshes itself
         return response
 
+    def filter_matches(store: DB, matches: list, show: str) -> tuple[str, list, list]:
+        """The chosen filter (or "all"), each filter's count, and the matches it keeps."""
+        ready = {m.job_id for m in matches if (p := store.prepared_for_job(m.job_id)) and p.status in ("ready", "filled")}
+        tests = {
+            "all": lambda m: True,
+            "strong": lambda m: m.evaluation.score >= 80,
+            "remote": lambda m: m.job.remote,
+            "ready": lambda m: m.job_id in ready,
+        }
+        show = show if show in tests else "all"
+        filters = [(key, label, sum(1 for m in matches if tests[key](m))) for key, label in TODAY_FILTERS]
+        return show, filters, [m for m in matches if tests[show](m)]
+
+    @app.get("/offers", response_class=HTMLResponse)
+    def offers(request: Request, q: str = "", show: str = "all", limit: int = OFFERS_SHOWN):
+        store = db()
+        matches = [store.match(i) for i in store.open_job_ids(min_score)]
+        if q.strip():
+            needle = normalize(q)
+            matches = [m for m in matches if needle in normalize(f"{m.job.company} {m.job.title} {m.job.location}")]
+        show, filters, matches = filter_matches(store, matches, show)
+        limit = max(1, limit)
+        return templates.TemplateResponse(request, "offers.html", {
+            "matches": matches[:limit], "more": max(0, len(matches) - limit), "limit": limit, "q": q, "show": show,
+            "filters": filters, "min_score": min_score, "follow_ups": store.follow_up_due_ids(clock()), "active": "offers",
+        })
+
+    @app.get("/applied", response_class=HTMLResponse)
+    def applied(request: Request):
+        return templates.TemplateResponse(request, "applied.html", {"rows": db().applications_list(), "now": clock(), "active": "applied"})
+
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request):
         store = db()
@@ -145,16 +180,7 @@ def create_app(
         hidden = 0 if all else sum(1 for m in matches if m.evaluation.score < min_score)
         if not all:
             matches = [m for m in matches if m.evaluation.score >= min_score]
-        ready = {m.job_id for m in matches if (p := store.prepared_for_job(m.job_id)) and p.status in ("ready", "filled")}
-        tests = {
-            "all": lambda m: True,
-            "strong": lambda m: m.evaluation.score >= 80,
-            "remote": lambda m: m.job.remote,
-            "ready": lambda m: m.job_id in ready,
-        }
-        show = show if show in tests else "all"
-        filters = [(key, label, sum(1 for m in matches if tests[key](m))) for key, label in TODAY_FILTERS]
-        matches = [m for m in matches if tests[show](m)]
+        show, filters, matches = filter_matches(store, matches, show)
         return templates.TemplateResponse(
             request,
             "today.html",
