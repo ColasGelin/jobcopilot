@@ -27,6 +27,15 @@ An LLM writing a CV can invent things, so the checks are plain code, not more pr
 - **Personal questions:** diversity and consent questions are never answered by Claude or the agent.
 - **No submit:** the agent only fills fields. The one button it can click, to open a form, is checked first, and tests confirm that nothing gets submitted.
 
+## Measuring the AI
+
+`jobcopilot eval run` checks the AI features against a fixed test set and a saved baseline, and the Evals page shows one verdict, the failing cases and what to do next.
+
+- **Match scoring:** 32 authored postings, clear fits and clear misfits, including traps such as years of experience hidden in the body or an on-site-only role. Each score must land on the right side of its line.
+- **Agreement with my decisions:** the jobs I applied to should score above the ones I skipped. The test set grows as I use the dashboard.
+- **Tailored CV:** the share of CVs that pass the fact guard on the first try, before any retry.
+- **Gate:** a change counts as worse only when the 95% interval on the same cases excludes zero. `eval run --gate` then exits with code 1.
+
 ## How it is built
 
 - Python, FastAPI and htmx for the dashboard, Typer for the CLI
@@ -59,6 +68,6 @@ uv run jobcopilot --home data serve
 
 ## Limits
 
-- I have not published a measurement of scoring quality yet.
+- The scoring test set is small and the scorer passes all of it, so it catches regressions but cannot show improvements yet. Agreement with my own decisions rests on 14 jobs.
 - It needs a Claude Code token.
 - It is built for my own search. The profile, CV and config files need editing before it suits anyone else.
