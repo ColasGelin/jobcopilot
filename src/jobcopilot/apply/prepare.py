@@ -77,6 +77,7 @@ class Preparer:
                     url, result = found, self.read(job.model_copy(update={"url": found}))
             if isinstance(result, NeedsYou):
                 self.db.update_prepared(app_id, now, status="needs_you", reason=explain(url, result.reason))
+                self._cv_without_form(job)
                 return self.db.get_prepared(app_id)
             self.db.delete_answers(app_id)  # a re-read replaces the earlier answers
             self.db.update_prepared(app_id, now, status="drafting", reason=None, form=result)
@@ -186,9 +187,21 @@ class Preparer:
         self.db.update_prepared(app_id, now, status="ready", reason=None, ai_ban_quote=quote)
         return self.db.get_prepared(app_id)
 
-    def _ensure_cv(self, job: Job, bank: Bank, fields: list[FormField]) -> str | None:
-        """Tailor the CV when the form asks for one and the job has none yet; a problem message if that fails."""
-        wants_cv = any(f.kind == "file" and has_word(f.label, CV_WORDS) for f in fields)
+    def _cv_without_form(self, job: Job) -> None:
+        """The form could not be read (Easy Apply, sign-in): the candidate applies by hand, so the CV is still tailored."""
+        try:
+            problem = self._ensure_cv(job, self.bank_loader(), None)
+        except LLMUnavailable:
+            raise
+        except Exception as e:  # the card keeps saying why the form needs the candidate
+            problem = str(e) or repr(e)
+        if problem:
+            log.warning("no CV for %s: %s", job.id, problem)
+
+    def _ensure_cv(self, job: Job, bank: Bank, fields: list[FormField] | None) -> str | None:
+        """Tailor the CV when the form asks for one (or there is no form to ask) and the job has none yet;
+        a problem message if that fails."""
+        wants_cv = fields is None or any(f.kind == "file" and has_word(f.label, CV_WORDS) for f in fields)
         if not wants_cv or self.db.latest_tailored_cv(job.id) is not None:
             return None
         from jobcopilot.cv.render import render_pdf

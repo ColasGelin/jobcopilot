@@ -78,9 +78,9 @@ def test_existing_tailored_cv_is_reused(env):
 
 def test_prepare_job_needs_you_records_reason(env):
     _, db, *_, jobs = env
-    p, llm, _ = preparer(env, [], read=lambda job: NeedsYou(reason="Sign-in or account creation required"))
+    p, llm, _ = preparer(env, [TAILORED], read=lambda job: NeedsYou(reason="Sign-in or account creation required"))
     app = p.prepare_job(jobs[0].id, NOW)
-    assert (app.status, app.reason) == ("needs_you", "Sign-in or account creation required") and llm.calls == []
+    assert (app.status, app.reason) == ("needs_you", "Sign-in or account creation required")
 
 
 def test_prepare_twice_no_second_call(env):
@@ -359,3 +359,19 @@ def test_linkedin_without_a_form_says_easy_apply(env):
     p = Preparer(db=db, settings=settings, profile=profile, llm=FakeLLMClient([]), read=lambda j: NeedsYou(reason="No application form found"),
                  bank_loader=lambda: load_bank(tmp / "cv.yaml"), resolve=lambda j: None)
     assert "Easy Apply" in p.prepare_job(job.id, NOW).reason
+
+
+def test_a_job_whose_form_cannot_be_read_still_gets_its_cv(env):
+    tmp, db, settings, profile, jobs = env
+    p, llm, _ = preparer(env, [TAILORED], read=lambda job: NeedsYou(reason="Sign-in or account creation required"))
+    app = p.prepare_job(jobs[0].id, NOW)
+    assert app.status == "needs_you" and db.latest_tailored_cv(jobs[0].id) is not None
+    p.prepare_job(jobs[0].id, NOW)  # trying again does not tailor a second time
+    assert len(llm.calls) == 1
+
+
+def test_cv_failure_keeps_the_needs_you_reason(env):
+    tmp, db, settings, profile, jobs = env
+    p, _, _ = preparer(env, [LLMError("boom")], read=lambda job: NeedsYou(reason="No application form found"))
+    app = p.prepare_job(jobs[0].id, NOW)
+    assert app.status == "needs_you" and app.reason == "No application form found"
