@@ -77,3 +77,17 @@ def test_nav_links_the_new_pages(tmp_path):
     DB(tmp_path / "jobs.db")
     body = client(tmp_path).get("/").text
     assert 'href="/offers"' in body and 'href="/applied"' in body
+
+
+def test_remote_is_flagged_when_the_posting_never_says_it(tmp_path):
+    from jobcopilot.web.insights import remote_unconfirmed
+
+    board = make_job(1, source="linkedin", location="Madrid, Spain", description="Build agents in our Madrid office.")
+    says_so = make_job(2, source="indeed", location="Madrid, Spain", description="Puesto 100% en remoto.")
+    other = make_job(3, source="hn", location="Madrid", description="Build agents.")
+    onsite = make_job(4, source="linkedin", remote=False, location="Málaga", description="Office.")
+    assert remote_unconfirmed(board) and not remote_unconfirmed(says_so)
+    assert not remote_unconfirmed(other) and not remote_unconfirmed(onsite)
+    db = DB(tmp_path / "jobs.db")
+    seed(db, board, 80)
+    assert "Check it&#39;s remote" in client(tmp_path).get("/offers").text or "Check it's remote" in client(tmp_path).get("/offers").text

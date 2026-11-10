@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections import Counter
 from datetime import date, datetime, time, timedelta
 
+from jobcopilot.models import Job
 from jobcopilot.report import SOURCE_NAMES
+from jobcopilot.text import normalize
 
 TODAY_FILTERS = (("all", "All"), ("strong", "Strong 80+"), ("remote", "Remote"), ("ready", "Ready"))
 STRONG_SCORE = 80
@@ -17,6 +19,18 @@ _CLOSED = ("applied", "interview", "offer", "rejected", "skipped", "unavailable"
 _REACHED = ("applied", "interview", "offer")
 _SCORE_BANDS = (("0–39", 0, 39), ("40–59", 40, 59), ("60–69", 60, 69), ("70–79", 70, 79), ("80–100", 80, 100))
 _TODO_ORDER = {"ready": 0, "follow_up": 1, "needs_you": 2}
+
+
+_BOARDS = ("linkedin", "indeed")  # their remote flag comes from our search filter, not from the posting
+_REMOTE_WORDS = ("remote", "remoto", "remota", "teletrabajo", "work from home", "desde casa", "wfh")
+
+
+def remote_unconfirmed(job: Job) -> bool:
+    """A board offer counted as remote although its own text never says so: it may be hybrid or on-site."""
+    if job.source not in _BOARDS or not job.remote:
+        return False
+    text = normalize(f"{job.title} {job.location} {job.description}")
+    return not any(word in text for word in _REMOTE_WORDS)
 
 
 RUN_LATE_AFTER = time(10, 0)  # the run starts at 08:30 and takes a few minutes

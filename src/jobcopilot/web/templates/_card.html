@@ -13,7 +13,7 @@
   </div>
   <p class="tags">
     {% if not compact %}<span class="tag">{{ m.job.location or "Location not stated" }}</span>
-    {% if m.job.remote %}<span class="tag accent">Remote</span>{% endif %}
+    {% if remote_unconfirmed(m.job) %}<span class="tag warn-tag" title="Found by a remote-only search, but the posting never says remote. It may be hybrid or on-site.">Check it's remote</span>{% elif m.job.remote %}<span class="tag accent">Remote</span>{% endif %}
     <span class="tag">{{ m.job.salary_text or "Salary not stated" }}</span>{% endif %}
     {% if m.job_id in follow_ups %}<span class="tag warn-tag">Follow up</span>{% endif %}
     {% if safe_url(m.job.url) %}<a class="tag" href="{{ safe_url(m.job.url) }}" target="_blank" rel="noopener noreferrer">{{ source_name(m.job.source) }} ↗</a>{% else %}<span class="tag">{{ source_name(m.job.source) }}</span>{% endif %}
