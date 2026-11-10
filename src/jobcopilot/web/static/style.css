@@ -127,6 +127,8 @@ a.tag { color: var(--accent); }
 .card.compact select { font-size: 12px; padding: 3px 6px; }
 
 /* Dashboard */
+.alert { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--good); border-radius: 12px; background: var(--good-soft); color: var(--text); font-size: 14px; }
+.alert b { color: var(--good); }
 .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
 .kpi { padding: 16px 18px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
 .kpi p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }

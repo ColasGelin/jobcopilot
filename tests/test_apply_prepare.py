@@ -325,3 +325,37 @@ def test_new_links_reread_a_ready_application(env):
     p.prepare_job(jobs[0].id, NOW)
     app = p.use_links(jobs[0].id, "https://jobs.lever.co/co1/apply", "", NOW)
     assert len(reads) == 2 and app.status == "ready" and len(db.answers(app.id)) == 3
+
+
+def test_a_page_without_a_form_falls_back_to_the_company_board(env):
+    tmp, db, settings, profile, jobs = env
+    reads = []
+
+    def read(job):
+        reads.append(job.url)
+        return FORM if "greenhouse" in job.url else NeedsYou(reason="No application form found")
+
+    p = Preparer(db=db, settings=settings, profile=profile, llm=FakeLLMClient([TAILORED, DRAFT]), read=read,
+                 bank_loader=lambda: load_bank(tmp / "cv.yaml"), resolve=lambda job: "https://boards.greenhouse.io/co1/jobs/1")
+    app = p.prepare_job(jobs[0].id, NOW)
+    assert app.status == "ready" and reads == [jobs[0].url, "https://boards.greenhouse.io/co1/jobs/1"]
+    assert db.apply_url(jobs[0].id) == "https://boards.greenhouse.io/co1/jobs/1"
+
+
+def test_no_fallback_when_the_candidate_gave_the_link(env):
+    tmp, db, settings, profile, jobs = env
+    db.set_apply_url(jobs[0].id, "https://acme.com/apply")
+    resolved = []
+    p = Preparer(db=db, settings=settings, profile=profile, llm=FakeLLMClient([]), read=lambda job: NeedsYou(reason="No application form found"),
+                 bank_loader=lambda: load_bank(tmp / "cv.yaml"), resolve=lambda job: resolved.append(job) or "https://x")
+    assert p.prepare_job(jobs[0].id, NOW).status == "needs_you" and resolved == []
+
+
+def test_linkedin_without_a_form_says_easy_apply(env):
+    tmp, db, settings, profile, _ = env
+    job = make_job(9, company="Co9")
+    job = job.model_copy(update={"url": "https://www.linkedin.com/jobs/view/42"})
+    db.insert_jobs([job], NOW)
+    p = Preparer(db=db, settings=settings, profile=profile, llm=FakeLLMClient([]), read=lambda j: NeedsYou(reason="No application form found"),
+                 bank_loader=lambda: load_bank(tmp / "cv.yaml"), resolve=lambda j: None)
+    assert "Easy Apply" in p.prepare_job(job.id, NOW).reason

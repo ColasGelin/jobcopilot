@@ -12,6 +12,10 @@
       </p>
     {% endif %}
   </div>
+  {% if warning %}
+    <div class="alert" role="status"><b>{{ warning }}</b> The server or its containers may be down: on the MSI, run
+      <code>cd ~/jobcopilot && docker compose up -d</code>. See <a href="/runs">Runs</a>.</div>
+  {% endif %}
   {% if not kpis.found %}
     <p class="empty">No offers yet. They appear after the daily run.</p>
   {% else %}

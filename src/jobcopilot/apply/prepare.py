@@ -10,6 +10,7 @@ from typing import Callable
 from jobcopilot.apply.ai_policy import find_ai_ban, find_ai_policy_field
 from jobcopilot.apply.draft import APPLY_PROMPT_VERSION, CV_WORDS, has_word, draft_answers, fallback_answers
 from jobcopilot.apply.models import FormField, FormSnapshot, NeedsYou, PreparedApp
+from jobcopilot.apply.resolve import explain
 from jobcopilot.apply.voice import load_voice
 from jobcopilot.config import Profile, Settings
 from jobcopilot.cv.bank import Bank, BankError
@@ -29,6 +30,7 @@ class Preparer:
     read: Callable[[Job], FormSnapshot | NeedsYou]
     bank_loader: Callable[[], Bank]
     fetch: Callable[[str], Job | NeedsYou] | None = None  # a job from a pasted link (apply/fetch.py)
+    resolve: Callable[[Job], str | None] | None = None  # the same role on the company's own board (apply/resolve.py)
 
     def add_job(self, url: str, now: datetime) -> tuple[str | None, str | None]:
         """A job from a link the candidate pasted: stored, scored and prepared whatever its score.
@@ -66,9 +68,15 @@ class Preparer:
         else:
             app_id = self.db.create_prepared(job_id, "reading", now)
         try:
-            result = self.read(job.model_copy(update={"url": self.db.form_url(job_id) or job.url}))
+            url = self.db.form_url(job_id) or job.url
+            result = self.read(job.model_copy(update={"url": url}))
+            if isinstance(result, NeedsYou) and self.resolve and not self.db.apply_url(job_id):
+                found = self.resolve(job)  # links the candidate gave are never second-guessed
+                if found and found != url:
+                    self.db.set_apply_url(job_id, found)
+                    url, result = found, self.read(job.model_copy(update={"url": found}))
             if isinstance(result, NeedsYou):
-                self.db.update_prepared(app_id, now, status="needs_you", reason=result.reason)
+                self.db.update_prepared(app_id, now, status="needs_you", reason=explain(url, result.reason))
                 return self.db.get_prepared(app_id)
             self.db.delete_answers(app_id)  # a re-read replaces the earlier answers
             self.db.update_prepared(app_id, now, status="drafting", reason=None, form=result)

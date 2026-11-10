@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from jobcopilot.report import SOURCE_NAMES
 
@@ -17,6 +17,21 @@ _CLOSED = ("applied", "interview", "offer", "rejected", "skipped", "unavailable"
 _REACHED = ("applied", "interview", "offer")
 _SCORE_BANDS = (("0–39", 0, 39), ("40–59", 40, 59), ("60–69", 60, 69), ("70–79", 70, 79), ("80–100", 80, 100))
 _TODO_ORDER = {"ready": 0, "follow_up": 1, "needs_you": 2}
+
+
+RUN_LATE_AFTER = time(10, 0)  # the run starts at 08:30 and takes a few minutes
+
+
+def run_warning(last_success_day: date | None, now: datetime) -> str | None:
+    """Why the daily run looks missing, or None. A missing run usually means the server or its containers are down."""
+    if last_success_day is None:
+        return "No daily run has finished yet."
+    late = (now.date() - last_success_day).days
+    if late >= 2:
+        return f"No daily run since {last_success_day.strftime('%d %b')}."
+    if late == 1 and now.time() >= RUN_LATE_AFTER:
+        return f"No daily run today yet (last one {last_success_day.strftime('%d %b')})."
+    return None
 
 
 def next_step(status: str, prep: str | None) -> str | None:

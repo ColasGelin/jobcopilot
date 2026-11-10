@@ -24,7 +24,7 @@ from jobcopilot.db import DB
 from jobcopilot.llm import LLMClient, LLMError
 from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
-from jobcopilot.web.insights import TODAY_FILTERS, dashboard, next_step, steps
+from jobcopilot.web.insights import TODAY_FILTERS, dashboard, next_step, run_warning, steps
 
 HERE = Path(__file__).parent
 
@@ -125,7 +125,9 @@ def create_app(
         runs = store.list_runs(1)
         stats = dashboard(store.dashboard_rows(), clock().date(), min_score, store.follow_up_due_ids(clock()))
         return templates.TemplateResponse(
-            request, "dashboard.html", {**stats, "run": runs[0][1] if runs else None, "min_score": min_score, "active": "dashboard"}
+            request, "dashboard.html",
+            {**stats, "run": runs[0][1] if runs else None, "warning": run_warning(store.last_success_day(), clock()),
+             "min_score": min_score, "active": "dashboard"},
         )
 
     @app.get("/today", response_class=HTMLResponse)

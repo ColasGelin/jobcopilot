@@ -7,7 +7,7 @@ from conftest import make_job
 from jobcopilot.db import DB
 from jobcopilot.models import Evaluation, Run
 from jobcopilot.web import create_app
-from jobcopilot.web.insights import dashboard, next_step, steps
+from jobcopilot.web.insights import dashboard, next_step, run_warning, steps
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc)
 
@@ -204,3 +204,21 @@ def test_marking_applied_from_the_card_updates_the_application_too(db):
     app = db.create_prepared(job.id, "filled", NOW)
     client(db).post(f"/jobs/{job.id}/status", data={"status": "applied"})
     assert db.get_prepared(app).status == "applied"
+
+
+@pytest.mark.parametrize("last,now,expected", [
+    (date(2026, 11, 2), datetime(2026, 11, 2, 9, 0), None),
+    (date(2026, 11, 1), datetime(2026, 11, 2, 8, 0), None),       # today's run is not due yet
+    (date(2026, 11, 1), datetime(2026, 11, 2, 10, 30), "No daily run today yet (last one 01 Nov)."),
+    (date(2026, 10, 28), datetime(2026, 11, 2, 7, 0), "No daily run since 28 Oct."),
+    (None, datetime(2026, 11, 2, 12, 0), "No daily run has finished yet."),
+])
+def test_run_warning(last, now, expected):
+    assert run_warning(last, now) == expected
+
+
+def test_dashboard_shows_the_run_warning(db):
+    seed(db, make_job(1))
+    rid = db.start_run(Run(started_at=NOW - timedelta(days=3)))
+    db.finish_run(rid, Run(started_at=NOW - timedelta(days=3), finished_at=NOW - timedelta(days=3), fetched=1))
+    assert "No daily run since 30 Oct." in client(db).get("/").text
