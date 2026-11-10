@@ -178,6 +178,7 @@ a.tag { color: var(--accent); }
 table.applied { background: transparent; }
 table.applied th { color: var(--muted); font-weight: 600; font-size: 12px; }
 table.applied td { font-size: 14px; padding: 10px; }
+table.applied td:nth-child(n+3) { white-space: nowrap; }
 table.applied tr:last-child td { border-bottom: 0; }
 .badge.status-interview, .badge.status-offer { background: var(--strong-soft); color: var(--strong); }
 .badge.status-applied { background: var(--accent-soft); color: var(--accent); }
