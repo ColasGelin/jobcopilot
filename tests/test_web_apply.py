@@ -67,9 +67,10 @@ def client(tmp, preparer=True, htmx=True):
 def test_card_offers_prepare_now_then_shows_badge(home):
     tmp, job, db = home
     c, fake = client(tmp)
-    assert f'hx-post="/jobs/{job.id}/prepare"' in c.get("/today").text
-    r = c.post(f"/jobs/{job.id}/prepare")
-    assert r.status_code == 200 and "Application ready" in r.text and fake.calls == [job.id]
+    assert f'hx-post="/jobs/{job.id}/prepare?card=1"' in c.get("/today").text
+    r = c.post(f"/jobs/{job.id}/prepare?card=1")  # from a card: the whole card comes back, with the next step
+    assert r.status_code == 200 and 'class="card ' in r.text and "Review answers" in r.text and fake.calls == [job.id]
+    assert "Application ready" in c.post(f"/jobs/{job.id}/prepare").text  # from the job's page: only that panel
     assert f'href="/jobs/{job.id}/application"' in c.get("/today").text
 
 
@@ -94,7 +95,7 @@ def test_application_page_shows_answers_problems_and_ai_ban(home):
     page = c.get(f"/jobs/{job.id}/application")
     assert page.status_code == 200
     for text in ("Please do not use AI to write your answers.", "alex@example.com", "I built a RAG assistant.",
-                 "AWS not in the source", "Tailored CV", "Left for you", "Fill form", "Mark applied"):
+                 "AWS not in the source", "Tailored CV", "Left for you", "Fill the form on my Mac", "I applied: save what I sent"):
         assert text in page.text
     assert c.get("/jobs/nope/application").status_code == 404
 
@@ -135,7 +136,9 @@ def test_open_continue_and_applied_flow(home):
     cmd = db.latest_command(app)
     assert cmd.action == "read" and cmd.status == "queued"
     db.set_command(cmd.id, "waiting", NOW)
-    assert "Continue" in c.get(f"/jobs/{job.id}/application").text
+    page = c.get(f"/jobs/{job.id}/application").text
+    assert "read the form" in page and f'hx-post="/applications/{app}/continue"' in page
+    assert "Open the page on my Mac" not in page  # one main button at a time
     c.post(f"/applications/{app}/continue")
     assert db.get_command(cmd.id).status == "queued"
     r = c.post(f"/applications/{app}/applied")
@@ -170,9 +173,9 @@ def test_read_next_step_offered_after_fill_and_try_again_when_stuck(home):
     app = seed_app(db, job.id, status="filled")
     c, _ = client(tmp)
     page = c.get(f"/jobs/{job.id}/application").text
-    assert "Read next step" in page and f'hx-post="/applications/{app}/open"' in page
+    assert "next page" in page and "Fill the form again" in page and f'hx-post="/applications/{app}/open"' in page
     db.update_prepared(app, NOW, status="reading")
-    assert "Try again" in c.get(f"/jobs/{job.id}/application").text
+    assert "Read the form again" in c.get(f"/jobs/{job.id}/application").text
 
 
 def test_application_page_cv_link_downloads(home):
@@ -202,7 +205,6 @@ def link_client(tmp):
 def test_links_form_on_card_and_page(home):
     tmp, job, db = home
     c, fake = link_client(tmp)
-    assert f'hx-post="/jobs/{job.id}/links"' in c.get("/today").text
     r = c.post(f"/jobs/{job.id}/links", data={"apply_url": "https://jobs.lever.co/acme/1", "role_url": "https://acme.com/role"})
     assert r.status_code == 200 and "Application ready" in r.text
     assert fake.calls == [(job.id, "https://jobs.lever.co/acme/1", "https://acme.com/role")]

@@ -63,6 +63,14 @@ CREATE TABLE IF NOT EXISTS cover_letters (
     job_id TEXT PRIMARY KEY REFERENCES jobs(id), draft TEXT, final TEXT, problems TEXT, model TEXT,
     prompt_version TEXT, updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS sent_records (
+    job_id TEXT PRIMARY KEY REFERENCES jobs(id), saved_at TEXT NOT NULL, cv TEXT, cover TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS sent_answers (
+    id INTEGER PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), question TEXT NOT NULL, answer TEXT NOT NULL,
+    source TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
     kept INTEGER, scored INTEGER, drafted INTEGER, failed_sources TEXT, error TEXT
@@ -99,6 +107,11 @@ class DB:
                 self.conn.commit()
             except sqlite3.OperationalError:  # the other container added it first
                 pass
+        for row in self.conn.execute(  # applications made before records existed
+            "SELECT job_id, applied_at FROM applications WHERE applied_at IS NOT NULL"
+            " AND job_id NOT IN (SELECT job_id FROM sent_records)"
+        ).fetchall():
+            self.record_application(row[0], _dt(row[1]))
 
     # --- jobs ---------------------------------------------------------------
     def filter_new(self, jobs: list[Job]) -> list[Job]:
@@ -137,7 +150,7 @@ class DB:
                 self.conn.executemany(
                     f"DELETE FROM {table} WHERE app_id IN (SELECT id FROM prepared_apps WHERE job_id = ?)", [(i,) for i in job_ids]
                 )
-            for table, col in (("cover_letters", "job_id"), ("prepared_apps", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
+            for table, col in (("sent_answers", "job_id"), ("sent_records", "job_id"), ("cover_letters", "job_id"), ("prepared_apps", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
                 self.conn.executemany(f"DELETE FROM {table} WHERE {col} = ?", [(i,) for i in job_ids])
 
     def get_job(self, job_id: str) -> Job | None:
@@ -414,6 +427,83 @@ class DB:
                 self.conn.execute(
                     "UPDATE applications SET status = ?, updated_at = ? WHERE job_id = ?", (status, _iso(now), job_id)
                 )
+        if status == "applied":
+            self.record_application(job_id, now)
+
+    # --- what was sent ----------------------------------------------------------
+    def record_application(self, job_id: str, now: datetime) -> bool:
+        """Copy the answers, cover letter and CV as they are now into a record of their own, once.
+        Later drafts never change it; only the candidate does, on the record's page."""
+        if self.conn.execute("SELECT 1 FROM sent_records WHERE job_id = ?", (job_id,)).fetchone():
+            return False
+        # The same role often comes from two boards; the work may sit on the other copy.
+        same_role = [job_id] + [r[0] for r in self.conn.execute(
+            "SELECT b.id FROM jobs a JOIN jobs b ON b.company_key = a.company_key AND b.title_key = a.title_key"
+            " WHERE a.id = ? AND b.id != a.id ORDER BY b.first_seen_at", (job_id,))]
+
+        def first(query: str):
+            return next((r for r in (self.conn.execute(query, (j,)).fetchone() for j in same_role) if r), None)
+
+        cv = first("SELECT content FROM tailored_cvs WHERE job_id = ? ORDER BY id DESC LIMIT 1")
+        cover = first("SELECT final FROM cover_letters WHERE job_id = ? AND trim(final) != ''")
+        answers: list[tuple[str, str, str]] = []
+        for j in same_role:
+            rows = self.conn.execute(
+                "SELECT a.label, a.field_key, a.draft, a.final FROM prepared_answers a JOIN prepared_apps p ON p.id = a.app_id"
+                " WHERE p.job_id = ? AND a.kind IN ('fact', 'open') ORDER BY a.id", (j,)).fetchall()
+            answers = [(r["label"] or r["field_key"], r["final"] if r["final"].strip() else r["draft"],
+                        "form" if r["final"].strip() else "draft") for r in rows if (r["final"] or r["draft"] or "").strip()]
+            if answers:
+                break
+        try:
+            with self.conn:
+                self.conn.execute("INSERT INTO sent_records (job_id, saved_at, cv, cover) VALUES (?,?,?,?)",
+                                  (job_id, _iso(now), cv[0] if cv else None, cover[0] if cover else ""))
+                self.conn.executemany("INSERT INTO sent_answers (job_id, question, answer, source) VALUES (?,?,?,?)",
+                                      [(job_id, *a) for a in answers])
+        except sqlite3.IntegrityError:  # the other container saved it first
+            return False
+        return True
+
+    def has_sent_record(self, job_id: str) -> bool:
+        return self.conn.execute("SELECT 1 FROM sent_records WHERE job_id = ?", (job_id,)).fetchone() is not None
+
+    def sent_record(self, job_id: str) -> dict | None:
+        row = self.conn.execute("SELECT saved_at, cv, cover, notes FROM sent_records WHERE job_id = ?", (job_id,)).fetchone()
+        if row is None:
+            return None
+        try:
+            cv = CvContent.model_validate_json(row["cv"]) if row["cv"] else None
+        except ValidationError:
+            cv = None
+        answers = self.conn.execute(
+            "SELECT id, question, answer, source FROM sent_answers WHERE job_id = ? ORDER BY id", (job_id,)).fetchall()
+        return {"saved_at": _dt(row["saved_at"]), "cv": cv, "cover": row["cover"], "notes": row["notes"],
+                "answers": [dict(a) for a in answers]}
+
+    def set_sent_text(self, job_id: str, field: str, text: str) -> bool:
+        if field not in ("cover", "notes"):
+            raise ValueError(f"unknown field {field!r}")
+        with self.conn:
+            return self.conn.execute(f"UPDATE sent_records SET {field} = ? WHERE job_id = ?", (text, job_id)).rowcount > 0
+
+    def add_sent_answer(self, job_id: str, question: str, answer: str) -> None:
+        with self.conn:
+            self.conn.execute("INSERT INTO sent_answers (job_id, question, answer, source) VALUES (?,?,?,'manual')",
+                              (job_id, question, answer))
+
+    def set_sent_answer(self, answer_id: int, answer: str) -> bool:
+        with self.conn:
+            return self.conn.execute("UPDATE sent_answers SET answer = ?, source = CASE source WHEN 'draft' THEN 'form' ELSE source END"
+                                     " WHERE id = ?", (answer, answer_id)).rowcount > 0
+
+    def delete_sent_answer(self, answer_id: int) -> str | None:
+        """The job the answer belonged to, or None when there was no such answer."""
+        row = self.conn.execute("SELECT job_id FROM sent_answers WHERE id = ?", (answer_id,)).fetchone()
+        if row:
+            with self.conn:
+                self.conn.execute("DELETE FROM sent_answers WHERE id = ?", (answer_id,))
+        return row[0] if row else None
 
     def follow_ups_due(self, now: datetime) -> list[tuple[Job, datetime]]:
         rows = self.conn.execute(

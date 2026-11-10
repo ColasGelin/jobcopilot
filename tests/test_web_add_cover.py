@@ -84,7 +84,7 @@ def test_cover_letter_write_edit_and_pdf(env):
     assert f'hx-post="/jobs/{job.id}/cover"' in page and "Write cover letter" in page
     assert c.get(f"/jobs/{job.id}/cover.pdf").status_code == 404
     r = c.post(f"/jobs/{job.id}/cover", headers=HX)
-    assert "Dear Acme team," in r.text and "AWS not in the source" in r.text and "Redo" in r.text and fake.covers == [job.id]
+    assert "Dear Acme team," in r.text and "AWS not in the source" in r.text and "Write it again" in r.text and fake.covers == [job.id]
     assert c.post(f"/jobs/{job.id}/cover/final", data={"final": "Dear Acme,\n\nMine."}, headers=HX).status_code == 204
     assert db.cover_letter(job.id)["final"] == "Dear Acme,\n\nMine."
     pdf = c.get(f"/jobs/{job.id}/cover.pdf")

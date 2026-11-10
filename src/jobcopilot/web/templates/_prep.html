@@ -1,38 +1,44 @@
 {% set app = prep_info(job_id) %}{% set cmd = command_info(app.id) if app else None %}
+{% set target = 'hx-target="#prep-' ~ job_id ~ '" hx-swap="outerHTML"' %}
+{% set waiting = cmd and cmd.status == "waiting" %}
 <div class="prep-block" id="prep-{{ job_id }}">
-  <b>Application</b>
   {% if not app %}
-    <span class="muted-text">Not prepared yet.</span>
+    <p class="state">Not prepared yet. Preparing reads the application form and drafts your answers.</p>
+    <div class="actions">
+      <button class="primary" hx-post="/jobs/{{ job_id }}/prepare" {{ target | safe }} hx-indicator="#prep-ind-{{ job_id }}" hx-disabled-elt="this">Prepare application</button>
+      <span class="htmx-indicator muted-text" id="prep-ind-{{ job_id }}">Reading the form and drafting… (1–2 min)</span>
+    </div>
+  {% elif app.status == "applied" %}
+    <p class="state"><span class="badge applied">Applied</span> Nothing left to do here.</p>
   {% else %}
-    {% if app.status == "ready" %}<span class="badge ready">Application ready</span>
-    {% elif app.status == "needs_you" %}<span class="badge needs">Needs you: {{ app.reason }}</span>
-    {% elif app.status == "filled" %}<span class="badge filled">Filled</span>
-    {% elif app.status == "applied" %}<span class="badge applied">Applied</span>
-    {% else %}<span class="badge">Preparing…</span>{% endif %}
-    {% if not page %}<a href="/jobs/{{ job_id }}/application">Open ↗</a>{% endif %}
-    {% set target = 'hx-target="#prep-' ~ job_id ~ '" hx-swap="outerHTML"' %}
-    {% if app.status in ("ready", "filled") %}
-      <button hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill form</button>
-      <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }} title="After clicking Next in the window on your Mac">Read next step</button>
-    {% endif %}
-    {% if app.status in ("reading", "drafting") %}
-      <button hx-post="/jobs/{{ job_id }}/prepare" {{ target | safe }} hx-disabled-elt="this" title="If it has been stuck for more than 15 minutes">Try again</button>
-    {% endif %}
-    {% if app.status == "needs_you" %}
-      <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }}>Open on my Mac</button>
-      <button hx-post="/jobs/{{ job_id }}/prepare" {{ target | safe }} hx-indicator="#prep-ind-{{ job_id }}" hx-disabled-elt="this">Try again</button>
-      <span class="htmx-indicator muted-text" id="prep-ind-{{ job_id }}">Reading… (1–2 min)</span>
-    {% endif %}
-    {% if cmd and cmd.status == "waiting" %}
-      <button hx-post="/applications/{{ app.id }}/continue" {{ target | safe }}>Continue</button>
-    {% endif %}
-    {% if app.status != "applied" %}
-      <button hx-post="/applications/{{ app.id }}/applied" {{ target | safe }}>Mark applied</button>
-    {% endif %}
+    <p class="state">
+      {% if app.status == "ready" %}<span class="badge ready">Application ready</span> Check the answers below, then fill the form.
+      {% elif app.status == "filled" %}<span class="badge filled">Filled</span> Check the window on your Mac and submit there yourself.
+      {% elif app.status == "needs_you" %}<span class="badge needs">Needs you</span> {{ app.reason }}
+      {% else %}<span class="badge">Preparing…</span> This takes 1–2 minutes.{% endif %}
+    </p>
+    <div class="actions">
+      {% if waiting %}
+        <button class="primary" hx-post="/applications/{{ app.id }}/continue" {{ target | safe }}>I'm done in the window: read the form</button>
+      {% elif app.status == "ready" %}
+        <button class="primary" hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill the form on my Mac</button>
+      {% elif app.status == "filled" %}
+        <button hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill the form again</button>
+      {% elif app.status == "needs_you" %}
+        <button class="primary" hx-post="/applications/{{ app.id }}/open" {{ target | safe }}>Open the page on my Mac</button>
+      {% endif %}
+      {% if app.status in ("ready", "filled") and not waiting %}
+        <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }} title="For forms with several pages: click Next in the window on your Mac first">Read the form's next page</button>
+      {% endif %}
+      {% if app.status in ("needs_you", "reading", "drafting") %}
+        <button {% if app.status != "needs_you" %}class="quiet" title="Only if it has been stuck for more than 15 minutes"{% endif %} hx-post="/jobs/{{ job_id }}/prepare" {{ target | safe }} hx-indicator="#prep-ind-{{ job_id }}" hx-disabled-elt="this">Read the form again</button>
+        <span class="htmx-indicator muted-text" id="prep-ind-{{ job_id }}">Reading… (1–2 min)</span>
+      {% endif %}
+    </div>
     {% if cmd %}
       <p class="muted-text">
         {% if cmd.status in ("queued", "taken") %}Waiting for your Mac… (the agent must be running and the tunnel open)
-        {% elif cmd.status == "waiting" %}Window open on your Mac: sign in, create the account or click Next there, then click Continue.{% if cmd.result and cmd.result.error %} ({{ cmd.result.error }}){% endif %}
+        {% elif cmd.status == "waiting" %}A window is open on your Mac: sign in, create the account or click Next there.{% if cmd.result and cmd.result.error %} ({{ cmd.result.error }}){% endif %}
         {% elif cmd.status == "failed" %}The Mac agent failed: {{ cmd.result.error if cmd.result else "unknown error" }}
         {% elif cmd.action == "fill" %}Filled {{ (cmd.result.filled | length) if cmd.result else 0 }} fields on your Mac. Check them, then submit yourself.
         {% else %}Form read on your Mac.{% endif %}
@@ -42,15 +48,17 @@
       {% endif %}
     {% endif %}
   {% endif %}
-  <details class="links"{% if page %} open{% endif %}>
-    <summary>Links{% if apply_url(job_id) %} · application page set{% endif %}</summary>
+  {% if not app or app.status != "applied" %}
+  <details class="links"{% if app and app.status == "needs_you" %} open{% endif %}>
+    <summary>Wrong or missing form? Paste its link</summary>
     <form hx-post="/jobs/{{ job_id }}/links" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML"
           hx-indicator="#links-ind-{{ job_id }}" hx-disabled-elt="find button">
-      <input type="url" name="apply_url" placeholder="Application page (the form)" value="{{ apply_url(job_id) }}" required>
-      <input type="url" name="role_url" placeholder="Role page, only if it's a different page">
-      <button>Use these links</button>
+      <input type="url" name="apply_url" aria-label="Application page (the form)" placeholder="Application page (the form)" value="{{ apply_url(job_id) }}" required>
+      <input type="url" name="role_url" aria-label="Role page, only if it's a different page" placeholder="Role page, only if it's a different page">
+      <button>Prepare from this link</button>
       <span class="htmx-indicator muted-text" id="links-ind-{{ job_id }}">Reading the pages and preparing… (1–2 min)</span>
     </form>
   </details>
+  {% endif %}
   {% if errors %}<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
 </div>

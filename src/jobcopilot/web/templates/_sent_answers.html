@@ -1,0 +1,19 @@
+<section class="panel" id="sent-answers">
+  <h2 class="panel-title">Answers</h2>
+  {% if not r.answers %}<p class="state">No answers were saved. Add the questions you answered below.</p>{% endif %}
+  {% for a in r.answers %}
+    <div class="answer">
+      <label for="sent-{{ a.id }}">{{ a.question }}
+        {% if a.source == "draft" %}<span class="tag warn-tag" title="Your edited text was not saved, so this is the draft. Correct it if you sent something else.">Draft, not your edit</span>
+        {% elif a.source == "manual" %}<span class="tag">Added by you</span>{% endif %}</label>
+      <textarea id="sent-{{ a.id }}" name="answer" rows="{{ [2, (a.answer | length) // 90 + 1] | max }}" hx-post="/sent/answers/{{ a.id }}" hx-trigger="change, keyup changed delay:1s" hx-swap="none">{{ a.answer }}</textarea>
+      <button class="quiet" hx-post="/sent/answers/{{ a.id }}/delete" hx-target="#sent-answers" hx-swap="outerHTML" hx-confirm="Remove this question and its answer from the record?">Remove</button>
+    </div>
+  {% endfor %}
+  <form class="add-answer" hx-post="/jobs/{{ job.id }}/sent/answers" hx-target="#sent-answers" hx-swap="outerHTML">
+    <h3>Add something you answered</h3>
+    <input name="question" aria-label="Question" placeholder="Question, e.g. Salary expectations?" required>
+    <textarea name="answer" aria-label="Your answer" rows="3" placeholder="What you answered"></textarea>
+    <button>Add to the record</button>
+  </form>
+</section>

@@ -1,15 +1,16 @@
 {% set letter = cover_info(job_id) %}
 <section class="panel cover-block" id="cover-{{ job_id }}">
-  <h2 class="panel-title">Cover letter</h2>
+  <h2 class="panel-title"><span class="num">3</span>Cover letter</h2>
   {% if letter %}
     <textarea name="final" rows="16" hx-post="/jobs/{{ job_id }}/cover/final" hx-trigger="change, keyup changed delay:1s" hx-swap="none">{{ letter.final }}</textarea>
     <span class="muted-text">{{ letter.final.split() | length }} words</span>
     {% if letter.problems %}<ul class="errors">{% for p in letter.problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
-    <p><a href="/jobs/{{ job_id }}/cover.pdf">Download PDF</a>
-      · <button hx-post="/jobs/{{ job_id }}/cover" hx-target="#cover-{{ job_id }}" hx-swap="outerHTML"
-                hx-confirm="Replace this letter (and your edits) with a new draft?" hx-indicator="#cover-ind-{{ job_id }}" hx-disabled-elt="this">Redo</button>
-      <span class="muted-text">Fill form attaches it when the form has a cover letter upload.</span></p>
+    <p class="actions"><a class="button" href="/jobs/{{ job_id }}/cover.pdf">Download PDF</a>
+      <button class="quiet" hx-post="/jobs/{{ job_id }}/cover" hx-target="#cover-{{ job_id }}" hx-swap="outerHTML"
+                hx-confirm="Replace this letter (and your edits) with a new draft?" hx-indicator="#cover-ind-{{ job_id }}" hx-disabled-elt="this">Write it again</button></p>
+    <p class="muted-text">Saved as you type. It is attached when the form has a cover letter upload.</p>
   {% else %}
+    <p class="state">Optional. None written yet.</p>
     <button hx-post="/jobs/{{ job_id }}/cover" hx-target="#cover-{{ job_id }}" hx-swap="outerHTML"
             hx-indicator="#cover-ind-{{ job_id }}" hx-disabled-elt="this">Write cover letter</button>
   {% endif %}

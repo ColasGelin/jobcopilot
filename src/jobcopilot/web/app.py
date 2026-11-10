@@ -110,6 +110,7 @@ def create_app(
     templates.env.globals["prep_info"] = lambda job_id: db().prepared_for_job(job_id)
     templates.env.globals["command_info"] = lambda app_id: db().latest_command(app_id)
     templates.env.globals["apply_url"] = lambda job_id: db().apply_url(job_id)
+    templates.env.globals["has_record"] = lambda job_id: db().has_sent_record(job_id)
 
     def progress_info(job_id: str) -> dict:
         """What the progress strip shows: the steps of a job and the one thing to do next."""
@@ -259,7 +260,7 @@ def create_app(
         )
 
     @app.post("/jobs/{job_id}/status", response_class=HTMLResponse)
-    def set_status(request: Request, job_id: str, status: str = Form(...), compact: bool = False):
+    def set_status(request: Request, job_id: str, status: str = Form(...), compact: bool = False, page: bool = False):
         # ... and require htmx's custom header, which a cross-site form cannot send (CSRF).
         if request.headers.get("hx-request") != "true":
             raise HTTPException(403, "requests must come from the dashboard")
@@ -272,6 +273,8 @@ def create_app(
         prepared = store.prepared_for_job(job_id)
         if status == "applied" and prepared is not None:
             store.update_prepared(prepared.id, clock(), status="applied")
+        if page:
+            return Response(status_code=200, headers={"HX-Refresh": "true"})
         return templates.TemplateResponse(
             request,
             "_card.html",
@@ -425,8 +428,15 @@ def create_app(
 
     # --- prepared applications --------------------------------------------------
     def prep_fragment(request: Request, job_id: str, errors: list[str] | None = None, status_code: int = 200):
+        if request.query_params.get("card") == "1":  # asked from an offer card: answer with the whole card
+            store = db()
+            return templates.TemplateResponse(
+                request, "_card.html",
+                {"m": store.match(job_id), "follow_ups": store.follow_up_due_ids(clock()), "compact": False, "errors": errors or []},
+                status_code=status_code,
+            )
         return changed(templates.TemplateResponse(
-            request, "_prep.html", {"job_id": job_id, "errors": errors or [], "page": False}, status_code=status_code
+            request, "_prep.html", {"job_id": job_id, "errors": errors or []}, status_code=status_code
         ), job_id)
 
     @app.get("/jobs/{job_id}/progress", response_class=HTMLResponse)
@@ -462,16 +472,20 @@ def create_app(
     def application_page(request: Request, job_id: str):
         store = db()
         job, prepared = store.get_job(job_id), store.prepared_for_job(job_id)
-        if job is None or prepared is None:
-            raise HTTPException(404, "no application for this job")
+        if job is None:
+            raise HTTPException(404, "unknown job")
+        record = store.sent_record(job_id)
         return templates.TemplateResponse(
             request, "application.html",
-            {"job": job, "app": prepared, "answers": store.answers(prepared.id), "active": "today"},
+            {"job": job, "app": prepared, "answers": store.answers(prepared.id) if prepared else [], "m": store.match(job_id),
+             "record": record, "status": store.status(job_id), "active": "applied" if record else "offers"},
         )
 
     @app.post("/answers/{answer_id}")
-    def autosave(request: Request, answer_id: int, final: str = Form("")):
+    async def autosave(request: Request, answer_id: int):
         require_htmx(request)
+        form = await request.form()  # the page sends the field under its own name, final-<id>
+        final = str(form.get(f"final-{answer_id}", form.get("final", "")))
         if not db().set_final(answer_id, final, clock()):
             raise HTTPException(404, "unknown answer")
         return Response(status_code=204)
@@ -513,6 +527,71 @@ def create_app(
         store.set_status(prepared.job_id, "applied", now)
         store.update_prepared(app_id, now, status="applied")
         return prep_fragment(request, prepared.job_id)
+
+    # --- what was sent ------------------------------------------------------------
+    def record_or_404(job_id: str):
+        store = db()
+        job, record = store.get_job(job_id), store.sent_record(job_id)
+        if job is None or record is None:
+            raise HTTPException(404, "no record for this job: it is saved when you apply")
+        return job, record
+
+    @app.post("/jobs/{job_id}/applied")
+    def applied_now(request: Request, job_id: str):
+        require_htmx(request)
+        job_or_404(job_id)
+        store, now = db(), clock()
+        store.set_status(job_id, "applied", now)
+        prepared = store.prepared_for_job(job_id)
+        if prepared is not None:
+            store.update_prepared(prepared.id, now, status="applied")
+        return Response(status_code=200, headers={"HX-Redirect": f"/jobs/{job_id}/sent"})
+
+    def sent_response(request: Request, job_id: str, name: str = "sent.html"):
+        job, record = record_or_404(job_id)
+        return templates.TemplateResponse(request, name, {"job": job, "r": record, "active": "applied"})
+
+    @app.get("/jobs/{job_id}/sent", response_class=HTMLResponse)
+    def sent_page(request: Request, job_id: str):
+        return sent_response(request, job_id)
+
+    @app.get("/jobs/{job_id}/sent/cv.pdf")
+    def sent_cv(job_id: str):
+        job, record = record_or_404(job_id)
+        if record["cv"] is None:
+            raise HTTPException(404, "no CV was saved with this application")
+        return pdf_response(render_pdf(record["cv"]).pdf, record["cv"], job.company)
+
+    @app.post("/jobs/{job_id}/sent/answers", response_class=HTMLResponse)
+    def sent_add(request: Request, job_id: str, question: str = Form(""), answer: str = Form("")):
+        require_htmx(request)
+        record_or_404(job_id)
+        if not question.strip():
+            raise HTTPException(400, "write the question")
+        db().add_sent_answer(job_id, question.strip(), answer.strip())
+        return sent_response(request, job_id, "_sent_answers.html")
+
+    @app.post("/jobs/{job_id}/sent/{field}")
+    def sent_text(request: Request, job_id: str, field: str, text: str = Form("")):
+        require_htmx(request)
+        if field not in ("cover", "notes") or not db().set_sent_text(job_id, field, text):
+            raise HTTPException(404, "no record for this job")
+        return Response(status_code=204)
+
+    @app.post("/sent/answers/{answer_id}")
+    def sent_edit(request: Request, answer_id: int, answer: str = Form("")):
+        require_htmx(request)
+        if not db().set_sent_answer(answer_id, answer):
+            raise HTTPException(404, "unknown answer")
+        return Response(status_code=204)
+
+    @app.post("/sent/answers/{answer_id}/delete", response_class=HTMLResponse)
+    def sent_delete(request: Request, answer_id: int):
+        require_htmx(request)
+        job_id = db().delete_sent_answer(answer_id)
+        if job_id is None:
+            raise HTTPException(404, "unknown answer")
+        return sent_response(request, job_id, "_sent_answers.html")
 
     # --- add a job by link, cover letters --------------------------------------
     @app.post("/jobs/add", response_class=HTMLResponse)

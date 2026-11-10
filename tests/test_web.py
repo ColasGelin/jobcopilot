@@ -36,7 +36,8 @@ def test_today_shows_matches_sorted(db_path):
     seed(db_path, [(low, 61), (high, 90)], draft_for=[high])
     body = client(db_path).get("/today").text
     assert body.index("HighCo") < body.index("LowCo")
-    assert "COVER HighCo" in body and "No draft" in body
+    assert "COVER HighCo" not in body  # drafts live on the job's page, not on the card
+    assert "COVER HighCo" in client(db_path).get(f"/jobs/{high.id}/application").text
 
 
 def test_today_empty_state(db_path):

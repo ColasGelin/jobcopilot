@@ -60,20 +60,20 @@ def test_cv_missing_bank(home):
     page = c.get("/cv")
     assert page.status_code == 200 and "cv.yaml" in page.text
     assert c.get("/cv.pdf").status_code == 404
-    today = c.get("/today")
-    assert today.status_code == 200
-    assert re.search(r'hx-post="/jobs/[^"]+/cv"[^>]*\sdisabled', today.text)
-    assert "No cv.yaml yet" in today.text
+    assert c.get("/today").status_code == 200
+    page = c.get(f"/jobs/{make_job(1, company='Acme').id}/application")
+    assert re.search(r'hx-post="/jobs/[^"]+/cv"[^>]*\sdisabled', page.text)
+    assert "No cv.yaml yet" in page.text
 
 
 def test_invalid_bank_disables_button_with_error(home):
     tmp, _ = home
     (tmp / "cv.yaml").write_text("contact: [unclosed", encoding="utf-8")
     c, _, _ = client(tmp)
-    today = c.get("/today")
-    assert today.status_code == 200
-    assert re.search(r'hx-post="/jobs/[^"]+/cv"[^>]*\sdisabled', today.text)
-    assert "not valid YAML" in today.text
+    assert c.get("/today").status_code == 200
+    page = c.get(f"/jobs/{make_job(1, company='Acme').id}/application")
+    assert re.search(r'hx-post="/jobs/[^"]+/cv"[^>]*\sdisabled', page.text)
+    assert "not valid YAML" in page.text
     assert "not valid YAML" in c.get("/cv").text
 
 
@@ -100,8 +100,9 @@ def test_stale_tailored_row_does_not_break_today(home):
 def test_today_card_has_tailor_button(home):
     tmp, job = home
     c, _, _ = client(tmp)
-    body = c.get("/today").text
-    assert f'hx-post="/jobs/{job.id}/cv"' in body
+    assert f'href="/jobs/{job.id}/application"' in c.get("/today").text  # the card links to the job's page
+    body = c.get(f"/jobs/{job.id}/application").text
+    assert f'hx-post="/jobs/{job.id}/cv"' in body and "Tailor CV for this job" in body
 
 
 def test_tailor_endpoint_creates_cv(home):
@@ -114,7 +115,7 @@ def test_tailor_endpoint_creates_cv(home):
     assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
     preview = c.get(f"/jobs/{job.id}/cv")
     assert "Built a RAG assistant." in preview.text
-    assert "Download PDF" in c.get("/today").text  # the card now shows the existing CV
+    assert "Download PDF" in c.get(f"/jobs/{job.id}/application").text and "Tailor it again" in r.text
 
 
 def test_tailored_pdf_rerendered_when_file_missing(home):

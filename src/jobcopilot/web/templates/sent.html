@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">{{ job.company }} · What I sent</p>
+      <h1>{{ job.title }}</h1>
+      <p class="meta">Applied on {{ r.saved_at.strftime("%d %b %Y") }}{% if safe_url(job.url) %} · <a href="{{ safe_url(job.url) }}" target="_blank" rel="noopener noreferrer">Job posting ↗</a>{% endif %}
+        · <a href="/applied">All applications</a></p>
+    </div>
+  </div>
+  <p class="notice-bar">This is a copy made when you applied. Later drafts never change it. Edit it if you changed something in the form by hand; it saves as you type.</p>
+  <section class="panel">
+    <h2 class="panel-title">CV</h2>
+    {% if r.cv %}<p class="state">The tailored CV ({{ r.cv.language | upper }}) as it was when you applied.</p>
+      <a class="button" href="/jobs/{{ job.id }}/sent/cv.pdf">Download PDF</a>
+    {% else %}<p class="state">No tailored CV was saved with this application.</p>{% endif %}
+  </section>
+  {% include "_sent_answers.html" %}
+  <section class="panel">
+    <h2 class="panel-title">Cover letter</h2>
+    <textarea name="text" aria-label="Cover letter" rows="{{ 14 if r.cover else 3 }}" placeholder="No cover letter was saved. Paste it here if you sent one."
+              hx-post="/jobs/{{ job.id }}/sent/cover" hx-trigger="change, keyup changed delay:1s" hx-swap="none">{{ r.cover }}</textarea>
+  </section>
+  <section class="panel">
+    <h2 class="panel-title">Notes</h2>
+    <textarea name="text" aria-label="Notes" rows="3" placeholder="Anything else worth remembering: who you wrote to, the salary you gave, where you applied."
+              hx-post="/jobs/{{ job.id }}/sent/notes" hx-trigger="change, keyup changed delay:1s" hx-swap="none">{{ r.notes }}</textarea>
+  </section>
+{% endblock %}

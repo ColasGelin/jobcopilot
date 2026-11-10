@@ -231,3 +231,29 @@ button.check[aria-pressed="true"] { background: var(--strong); border-color: var
   main { padding: 20px 16px 40px; }
   .bars li { grid-template-columns: 84px minmax(0, 1fr) 32px; }
 }
+
+/* Button levels: one .primary per card or panel (the next step), plain for other actions, .quiet for rare ones. */
+button.quiet { border-color: transparent; background: transparent; color: var(--muted); text-decoration: underline; padding: 6px 6px; }
+button.quiet:hover { color: var(--text); border-color: transparent; }
+.button.small, button.small { font-size: 12px; padding: 3px 9px; }
+.field-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 6px; }
+.status-menu { display: inline-flex; align-items: center; }
+.card-foot { align-items: center; }
+.card-foot .status-menu { margin-right: auto; }
+.card > .errors { margin: 10px 0 0; }
+.state { margin: 0 0 10px; font-size: 14px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.prep-block, .cv-block { margin-top: 0; }
+.prep-block .state, .prep-block .actions, .cv-block .state { flex-basis: 100%; }
+.cv-block .state { margin: 0 0 4px; }
+.prep-block details.links { margin-top: 8px; font-size: 13px; }
+.panel-title .num { margin: 0 8px 0 0; }
+.notice-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); font-size: 14px; }
+details.more > summary { font-weight: 600; font-size: 14px; }
+details.more h3 { font-size: 13px; margin: 14px 0 6px; }
+#sent-answers .answer { margin: 0 0 14px; }
+#sent-answers label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+#sent-answers textarea, #sent-answers input, .panel > textarea { width: 100%; font: inherit; padding: 8px 10px; }
+.add-answer { display: grid; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.add-answer h3 { margin: 0; font-size: 13px; }
+.add-answer button { justify-self: start; }

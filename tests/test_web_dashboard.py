@@ -178,16 +178,18 @@ def test_card_leads_with_the_next_step(db):
     c = client(db)
     assert "Prepare application" in c.get("/today").text
     app = db.create_prepared(job.id, "ready", NOW)
-    assert "Review application" in c.get("/today").text
+    assert "Review answers" in c.get("/today").text
+    db.update_prepared(app, NOW, status="needs_you", reason="Sign-in required")
+    assert "Finish it yourself" in c.get("/today").text
     db.update_prepared(app, NOW, status="filled")
-    assert '"status": "applied"' in c.get(f"/jobs/{job.id}/progress").text
+    assert f'hx-post="/jobs/{job.id}/applied"' in c.get(f"/jobs/{job.id}/progress").text
 
 
 def test_progress_fragment_has_no_review_button_on_the_application_page(db):
     job = make_job(1)
     seed(db, job)
     db.create_prepared(job.id, "ready", NOW)
-    assert "Review application" not in client(db).get(f"/jobs/{job.id}/progress?page=1").text
+    assert "Review answers" not in client(db).get(f"/jobs/{job.id}/progress?page=1").text
     assert client(db).get("/jobs/nope/progress").status_code == 404
 
 

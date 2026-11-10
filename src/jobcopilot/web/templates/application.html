@@ -4,14 +4,30 @@
     <div>
       <p class="eyebrow">{{ job.company }}</p>
       <h1>{{ job.title }}</h1>
-      <p class="meta">{% if safe_url(job.url) %}<a href="{{ safe_url(job.url) }}" target="_blank" rel="noopener noreferrer">Job page ↗</a> · {% endif %}Nothing is ever submitted for you: Fill form opens the form on your Mac and stops.</p>
+      <p class="meta">{% if safe_url(job.url) %}<a href="{{ safe_url(job.url) }}" target="_blank" rel="noopener noreferrer">Job posting ↗</a> · {% endif %}Nothing is ever submitted for you: you send the form yourself.</p>
     </div>
+    <label class="status-menu"><span class="field-label">Status</span>
+      <select name="status" hx-post="/jobs/{{ job.id }}/status?page=1" hx-swap="none">
+        {% for s, label in [("new", "New"), ("shortlisted", "Shortlisted"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skipped"), ("unavailable", "Unavailable")] %}
+          <option value="{{ s }}"{% if status == s %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
   </div>
-  <div class="panel">
-    {% with job_id = job.id, page = True %}{% include "_progress.html" %}{% endwith %}
-    {% with job_id = job.id, errors = [], page = True %}{% include "_prep.html" %}{% endwith %}
-  </div>
-  {% if app.ai_ban_quote %}
+  {% if record %}
+    <div class="notice-bar">You applied on {{ record.saved_at.strftime("%d %b %Y") }}. A copy of what you sent is kept separately.
+      <a class="button primary" href="/jobs/{{ job.id }}/sent">What I sent</a></div>
+  {% endif %}
+  <div class="panel">{% with job_id = job.id, page = True %}{% include "_progress.html" %}{% endwith %}</div>
+  <section class="panel">
+    <h2 class="panel-title"><span class="num">1</span>CV</h2>
+    {% with job_id = job.id, errors = [] %}{% include "_cv.html" %}{% endwith %}
+  </section>
+  <section class="panel">
+    <h2 class="panel-title"><span class="num">2</span>Application form</h2>
+    {% with job_id = job.id, errors = [] %}{% include "_prep.html" %}{% endwith %}
+  </section>
+  {% if app and app.ai_ban_quote %}
     <div class="ai-ban"><b>This posting asks candidates not to use AI.</b> Open answers were left for you to write.
       <blockquote>{{ app.ai_ban_quote }}</blockquote></div>
   {% endif %}
@@ -29,7 +45,7 @@
           {% set autosave = 'hx-post="/answers/' ~ a.id ~ '" hx-trigger="change, keyup changed delay:1s" hx-swap="none"' %}
           {% if a.kind == "open" %}
             <textarea id="final-{{ a.id }}" name="final-{{ a.id }}" rows="6" {{ autosave | safe }}>{{ a.final }}</textarea>
-            <span class="muted-text">{{ a.final.split() | length }} words</span>
+            <span class="muted-text">{{ a.final.split() | length }} words · saved as you type</span>
           {% elif a.kind == "fact" %}
             <input id="final-{{ a.id }}" name="final-{{ a.id }}" value="{{ a.final }}" {{ autosave | safe }}>
           {% elif a.kind == "cv" %}
@@ -48,4 +64,25 @@
   </form>
   {% endif %}
   {% with job_id = job.id, errors = [] %}{% include "_cover.html" %}{% endwith %}
+  <section class="panel">
+    <h2 class="panel-title"><span class="num">4</span>Send it</h2>
+    {% if record %}
+      <p class="state">Done: applied on {{ record.saved_at.strftime("%d %b %Y") }}.</p>
+      <a class="button" href="/jobs/{{ job.id }}/sent">What I sent</a>
+    {% else %}
+      <p class="state">Submit the form yourself. Then click below: your answers, cover letter and CV are saved as a record you can read later.</p>
+      <button class="{{ "primary" if app and app.status == "filled" else "" }}" hx-post="/jobs/{{ job.id }}/applied">I applied: save what I sent</button>
+    {% endif %}
+  </section>
+  {% if m and m.draft %}
+  <details class="panel more">
+    <summary>Short messages: cover note and outreach</summary>
+    <h3>Cover note <button class="copy" data-copy="note-{{ job.id }}">Copy</button></h3>
+    <p class="draft" id="note-{{ job.id }}">{{ m.draft.cover_note }}</p>
+    <h3>Outreach → {{ m.draft.contact_hint }} <button class="copy" data-copy="outreach-{{ job.id }}">Copy</button></h3>
+    <p class="draft" id="outreach-{{ job.id }}">{{ m.draft.outreach_message }}</p>
+    <h3>CV tweaks suggested when the offer was found</h3>
+    <ul>{% for t in m.draft.cv_tweaks %}<li>{{ t }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
 {% endblock %}

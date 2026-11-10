@@ -25,29 +25,16 @@
   </div>
   {% endif %}
   {% if not compact %}{% with job_id = m.job_id, page = False %}{% include "_progress.html" %}{% endwith %}{% endif %}
+  {% if errors %}<ul class="errors">{% for x in errors %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
   <div class="card-foot">
-    <label class="status-menu"><span class="sr-only">Status</span>
+    <label class="status-menu"><span class="field-label">Status</span>
       <select name="status" hx-post="/jobs/{{ m.job_id }}/status{% if compact %}?compact=1{% endif %}" hx-target="closest article" hx-swap="outerHTML">
         {% for s, label in [("new", "New"), ("shortlisted", "Shortlisted"), ("applied", "Applied"), ("interview", "Interview"), ("offer", "Offer"), ("rejected", "Rejected"), ("skipped", "Skipped"), ("unavailable", "Unavailable")] %}
           <option value="{{ s }}"{% if m.status == s %} selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
     </label>
-    {% if not compact %}
-    <details class="work">
-      <summary>CV, links and drafts</summary>
-      {% with job_id = m.job_id, errors = [] %}{% include "_cv.html" %}{% include "_prep.html" %}{% endwith %}
-      {% if m.draft %}
-        <h3>CV tweaks</h3>
-        <ul>{% for t in m.draft.cv_tweaks %}<li>{{ t }}</li>{% endfor %}</ul>
-        <h3>Cover note <button class="copy" data-copy="cover-{{ m.job_id }}">Copy</button></h3>
-        <p class="draft" id="cover-{{ m.job_id }}">{{ m.draft.cover_note }}</p>
-        <h3>Outreach → {{ m.draft.contact_hint }} <button class="copy" data-copy="outreach-{{ m.job_id }}">Copy</button></h3>
-        <p class="draft" id="outreach-{{ m.job_id }}">{{ m.draft.outreach_message }}</p>
-      {% else %}
-        <p class="muted-text">No draft</p>
-      {% endif %}
-    </details>
-    {% endif %}
+    {% if has_record(m.job_id) %}<a class="button{% if compact %} small{% endif %}" href="/jobs/{{ m.job_id }}/sent">What I sent</a>{% endif %}
+    {% if compact or progress_info(m.job_id).next != "review" %}<a class="button{% if compact %} small{% endif %}" href="/jobs/{{ m.job_id }}/application">{{ "Open" if compact else "CV, answers and letter" }}</a>{% endif %}
   </div>
 </article>

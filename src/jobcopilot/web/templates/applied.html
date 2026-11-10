@@ -22,7 +22,7 @@
             <td>{% if safe_url(r.url) %}<a href="{{ safe_url(r.url) }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</td>
             <td>{% if r.applied_at %}{% set days = (now - r.applied_at).days %}{{ r.applied_at.strftime("%d %b") }} <span class="muted-text">· {{ "today" if days == 0 else "1 day ago" if days == 1 else days ~ " days ago" }}</span>{% else %}—{% endif %}</td>
             <td><span class="badge status-{{ r.status }}">{{ r.status | capitalize }}</span>{% if due %} <span class="tag warn-tag">Follow up</span>{% endif %}</td>
-            <td>{% if r.prep %}<a href="/jobs/{{ r.id }}/application">Answers</a>{% endif %}</td>
+            <td><a class="button small" href="/jobs/{{ r.id }}/sent">What I sent</a></td>
           </tr>
         {% endfor %}
         </tbody>
