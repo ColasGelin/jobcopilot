@@ -4,11 +4,18 @@ A job-search assistant I run every day. It collects offers, scores them against 
 
 ## What it does
 
-1. **Collects** offers from 9 sources, including company job boards on Greenhouse, Ashby and Lever. LinkedIn public listings are a tenth, optional source, off by default.
+1. **Collects** offers from 9 sources, including company job boards on Greenhouse, Ashby and Lever. LinkedIn and Indeed public listings are optional extra sources, off by default.
 2. **Filters** them with rules: location, level, excluded phrases and minimum salary when one is stated.
 3. **Scores** what remains from 0 to 100 with Claude, with the reasons for the fit and the gaps.
 4. **Prepares** the best matches: reads the application form, tailors the CV and drafts the open answers in my own writing style.
 5. **Fills** the form in a visible browser on my Mac. I check everything and submit it myself.
+
+## The dashboard
+
+- **Dashboard:** key numbers, the funnel from offer to interview, offers per day, score spread, sources, and what needs me now. It warns when the daily run is missing.
+- **Offers:** every open offer from any day, best first, with search and filters. Each card shows why it fits, the gaps, and one button for the next step.
+- **Applied and Pipeline:** what I sent, when, and which ones are due a follow-up.
+- When a form can't be read, such as LinkedIn Easy Apply, it looks for the same role on the company's own job board, and still tailors the CV so I can apply by hand.
 
 ## Keeping the output honest
 
@@ -27,7 +34,7 @@ An LLM writing a CV can invent things, so the checks are plain code, not more pr
 - WeasyPrint for the CV PDF
 - Playwright for the Mac agent, which polls the dashboard and acts in a visible Chromium window
 - Docker Compose for the daily run and the dashboard
-- 440+ tests with pytest
+- 500+ tests with pytest
 
 ## Run it
 
