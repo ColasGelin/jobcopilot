@@ -166,6 +166,9 @@ a.tag { color: var(--accent); }
 .todo-item .what { color: var(--accent); font-weight: 500; }
 .todo-item.needs_you .what, .todo-item.follow_up .what { color: var(--good); }
 .todo-score { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.todo-row { display: flex; align-items: center; gap: 6px; }
+.todo-row .todo-item { flex: 1; min-width: 0; }
+.todo-skip { flex: none; }
 
 /* Application */
 .ai-ban { border: 1px solid var(--danger); color: var(--danger); border-radius: 10px; padding: 10px 14px; margin: 14px 0; }

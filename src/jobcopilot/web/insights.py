@@ -118,7 +118,7 @@ def _todo(rows: list[dict], follow_ups: set[str]) -> dict:
             continue
         items.append({"id": r["id"], "company": r["company"], "title": r["title"], "score": r["score"],
                       "kind": kind, "what": what, "href": href})
-    items.sort(key=lambda t: (_TODO_ORDER[t["kind"]], -t["score"]))
+    items.sort(key=lambda t: (-t["score"], _TODO_ORDER[t["kind"]]))  # best match first, whatever it waits for
     return {"items": items[:TODO_SHOWN], "total": len(items)}
 
 

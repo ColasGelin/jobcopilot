@@ -83,14 +83,14 @@ def test_sources_are_named_and_folded_after_six():
     assert {"label": "LinkedIn", "count": 1} in stats([row(1, source="linkedin")])["sources"]
 
 
-def test_todo_lists_ready_first_then_follow_ups_then_needs_you_and_skips_closed_jobs():
+def test_todo_is_ranked_by_score_and_leaves_out_closed_jobs():
     rows = [row(1, score=50, prep="ready"), row(2, score=90, prep="needs_you", reason="Sign-in"), row(3, score=99, prep="ready", status="skipped"),
-            row(4, status="applied", applied_at="2026-10-20"), row(5, score=70, prep="filled")]
+            row(4, score=75, status="applied", applied_at="2026-10-20"), row(5, score=70, prep="filled"), row(6, score=70, prep="needs_you", reason="x")]
     todo = stats(rows, follow_ups={"4"})["todo"]
-    assert [t["id"] for t in todo["items"]] == ["5", "1", "4", "2"] and todo["total"] == 4
-    assert todo["items"][3]["what"] == "Needs you: Sign-in"
-    assert todo["items"][0]["href"] == "/jobs/5/application"
-    assert todo["items"][2]["href"] == "/today?day=2026-11-02&all=1#job-4"
+    assert [t["id"] for t in todo["items"]] == ["2", "4", "5", "6", "1"] and todo["total"] == 5  # a tie puts ready first
+    assert todo["items"][0]["what"] == "Needs you: Sign-in"
+    assert todo["items"][2]["href"] == "/jobs/5/application"
+    assert todo["items"][1]["href"] == "/today?day=2026-11-02&all=1#job-4"
 
 
 def test_todo_is_capped_but_keeps_the_total():
@@ -136,6 +136,23 @@ def test_home_is_the_dashboard(db):
     body = client(db).get("/").text
     for text in ("Dashboard", "Strong matches", "Found", "Acme", f"/jobs/{job.id}/application", "578", "remoteok"):
         assert text in body
+
+
+def test_skip_from_the_todo_list(db):
+    job, applied = make_job(1, company="Acme"), make_job(2, company="FollowCo")
+    seed(db, job, 85)
+    seed(db, applied, 90)
+    db.create_prepared(job.id, "ready", NOW)
+    db.set_status(applied.id, "applied", NOW - timedelta(days=10))  # a follow-up is due
+    c = client(db)
+    body = c.get("/").text
+    assert f'hx-post="/jobs/{job.id}/status?page=1"' in body
+    assert f'hx-post="/jobs/{applied.id}/status?page=1"' not in body  # skipping would erase "applied"
+    r = c.post(f"/jobs/{job.id}/status?page=1", data={"status": "skipped"})
+    assert r.status_code == 200 and r.headers["HX-Refresh"] == "true"
+    assert db.status(job.id) == "skipped"
+    body = c.get("/").text
+    assert f"/jobs/{job.id}/application" not in body and "FollowCo" in body
 
 
 def test_dashboard_empty_state(db):

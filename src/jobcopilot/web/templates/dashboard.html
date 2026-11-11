@@ -50,11 +50,14 @@
       <section class="panel todo">
         <h2 class="panel-title">To do now{% if todo.total %} <span>{{ todo.total }}</span>{% endif %}</h2>
         {% for t in todo["items"] %}
-          <a class="todo-item {{ t.kind }}" href="{{ t.href }}">
-            <b>{{ t.company }}</b><span class="todo-score">{{ t.score }}</span>
-            <small>{{ t.title }}</small>
-            <small class="what">{{ t.what }}</small>
-          </a>
+          <div class="todo-row">
+            <a class="todo-item {{ t.kind }}" href="{{ t.href }}">
+              <b>{{ t.company }}</b><span class="todo-score">{{ t.score }}</span>
+              <small>{{ t.title }}</small>
+              <small class="what">{{ t.what }}</small>
+            </a>
+            {% if t.kind != "follow_up" %}<button class="button small todo-skip" hx-post="/jobs/{{ t.id }}/status?page=1" hx-vals='{"status": "skipped"}' title="Mark this offer as Skipped: it leaves the to-do list and the open offers. Set its status back on the card to undo.">Skip</button>{% endif %}
+          </div>
         {% else %}
           <p class="empty">Nothing waiting on you.</p>
         {% endfor %}
