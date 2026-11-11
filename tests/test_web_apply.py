@@ -100,12 +100,26 @@ def test_application_page_shows_answers_problems_and_ai_ban(home):
     assert c.get("/jobs/nope/application").status_code == 404
 
 
-def test_needs_you_page_offers_open_on_mac(home):
+def test_needs_you_page_links_to_the_form_in_a_new_tab(home):
     tmp, job, db = home
     app = db.create_prepared(job.id, "needs_you", NOW, reason="Sign-in or account creation required")
     c, _ = client(tmp)
     page = c.get(f"/jobs/{job.id}/application").text
-    assert "Sign-in or account creation required" in page and f'hx-post="/applications/{app}/open"' in page
+    assert "Sign-in or account creation required" in page and f'hx-post="/applications/{app}/open"' not in page
+    assert f'href="{job.url}" target="_blank" rel="noopener noreferrer">Open the application page' in page
+
+
+def test_needs_you_link_prefers_the_pasted_form_link_and_drops_unsafe_ones(home):
+    tmp, job, db = home
+    db.create_prepared(job.id, "needs_you", NOW, reason="Sign-in")
+    c, _ = client(tmp)
+    with db.conn:
+        db.conn.execute("UPDATE jobs SET apply_url = ? WHERE id = ?", ("https://boards.example.com/apply/1", job.id))
+    assert 'href="https://boards.example.com/apply/1" target="_blank"' in c.get(f"/jobs/{job.id}/application").text
+    with db.conn:
+        db.conn.execute("UPDATE jobs SET apply_url = ? WHERE id = ?", ("javascript:alert(1)", job.id))
+    page = c.get(f"/jobs/{job.id}/application").text
+    assert "href=\"javascript:" not in page and "Open the application page" not in page
 
 
 def test_autosave_final(home):
@@ -138,7 +152,7 @@ def test_open_continue_and_applied_flow(home):
     db.set_command(cmd.id, "waiting", NOW)
     page = c.get(f"/jobs/{job.id}/application").text
     assert "read the form" in page and f'hx-post="/applications/{app}/continue"' in page
-    assert "Open the page on my Mac" not in page  # one main button at a time
+    assert "Open the application page" not in page  # one main button at a time
     c.post(f"/applications/{app}/continue")
     assert db.get_command(cmd.id).status == "queued"
     r = c.post(f"/applications/{app}/applied")

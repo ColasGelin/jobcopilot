@@ -25,7 +25,7 @@
       {% elif app.status == "filled" %}
         <button hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill the form again</button>
       {% elif app.status == "needs_you" %}
-        <button class="primary" hx-post="/applications/{{ app.id }}/open" {{ target | safe }}>Open the page on my Mac</button>
+        {% set form_link = safe_url(form_url(job_id) or "") %}{% if form_link %}<a class="button primary" href="{{ form_link }}" target="_blank" rel="noopener noreferrer">Open the application page ↗</a>{% endif %}
       {% endif %}
       {% if app.status in ("ready", "filled") and not waiting %}
         <button hx-post="/applications/{{ app.id }}/open" {{ target | safe }} title="For forms with several pages: click Next in the window on your Mac first">Read the form's next page</button>

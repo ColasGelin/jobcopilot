@@ -110,6 +110,7 @@ def create_app(
     templates.env.globals["prep_info"] = lambda job_id: db().prepared_for_job(job_id)
     templates.env.globals["command_info"] = lambda app_id: db().latest_command(app_id)
     templates.env.globals["apply_url"] = lambda job_id: db().apply_url(job_id)
+    templates.env.globals["form_url"] = lambda job_id: db().form_url(job_id)
     templates.env.globals["has_record"] = lambda job_id: db().has_sent_record(job_id)
     templates.env.globals["mail_info"] = lambda job_id: db().latest_mail_change(job_id)
 
