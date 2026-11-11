@@ -241,3 +241,31 @@ def test_dashboard_shows_the_run_warning(db):
     rid = db.start_run(Run(started_at=NOW - timedelta(days=3)))
     db.finish_run(rid, Run(started_at=NOW - timedelta(days=3), finished_at=NOW - timedelta(days=3), fetched=1))
     assert "No daily run since 30 Oct." in client(db).get("/").text
+
+
+@pytest.mark.parametrize("url,site", [
+    ("https://www.linkedin.com/jobs/view/1", "LinkedIn"), ("https://es.linkedin.com/jobs/view/1", "LinkedIn"),
+    ("https://jobs.ashbyhq.com/alan/d4762f23", "Ashby"), ("https://job-boards.eu.greenhouse.io/x/jobs/1", "Greenhouse"),
+    ("https://grnh.se/abc", "Greenhouse"), ("https://jobs.eu.lever.co/x/1", "Lever"), ("https://apply.workable.com/j/1", "Workable"),
+    ("https://speedcast.wd1.myworkdayjobs.com/en-US/x", "Workday"), ("https://news.ycombinator.com/item?id=1", "Hacker News"),
+    ("https://himalayas.app/companies/x/jobs/y", "Himalayas"), ("https://job.tecdata.es/jobs/1-x", "Company site"),
+    ("https://notlinkedin.com/jobs/1", "Company site"),  # only the real domain or its subdomains
+    ("", "Company site"),
+])
+def test_page_site(url, site):
+    from jobcopilot.web.insights import page_site
+    assert page_site(url) == site
+
+
+def test_offer_cards_show_the_site_of_the_page_and_the_feed_that_found_it(db):
+    ashby = make_job(1, company="AshbyCo", source="indeed", url="https://jobs.ashbyhq.com/acme/1")
+    linkedin = make_job(2, company="LinkCo", source="linkedin", url="https://www.linkedin.com/jobs/view/2")
+    seed(db, ashby, 85)
+    seed(db, linkedin, 80)
+    db.set_status(ashby.id, "shortlisted", NOW)
+    c = client(db)
+    for page in ("/offers", "/pipeline"):
+        body = c.get(page).text
+        assert 'title="Found via Indeed · https://jobs.ashbyhq.com/acme/1">Ashby ↗</a>' in body, page
+    body = c.get("/offers").text
+    assert 'title="https://www.linkedin.com/jobs/view/2">LinkedIn ↗</a>' in body  # same site as its feed: no "found via"

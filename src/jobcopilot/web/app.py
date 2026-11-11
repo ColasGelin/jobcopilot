@@ -27,7 +27,7 @@ from jobcopilot.llm import LLMClient, LLMError
 from jobcopilot.models import STATUSES, Run
 from jobcopilot.report import SOURCE_NAMES
 from jobcopilot.text import normalize
-from jobcopilot.web.insights import TODAY_FILTERS, dashboard, next_step, remote_unconfirmed, run_warning, steps
+from jobcopilot.web.insights import TODAY_FILTERS, dashboard, next_step, page_site, remote_unconfirmed, run_warning, steps
 
 HERE = Path(__file__).parent
 
@@ -81,6 +81,7 @@ def create_app(
     templates.env.globals["duration"] = duration
     templates.env.globals["safe_url"] = safe_url
     templates.env.globals["remote_unconfirmed"] = remote_unconfirmed
+    templates.env.globals["page_site"] = page_site
 
     def db() -> DB:
         return DB(db_path)  # one connection per request; the daemon writes to the same file

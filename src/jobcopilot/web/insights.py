@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date, datetime, time, timedelta
+from urllib.parse import urlsplit
 
 from jobcopilot.models import Job
 from jobcopilot.report import SOURCE_NAMES
@@ -31,6 +32,25 @@ def remote_unconfirmed(job: Job) -> bool:
         return False
     text = normalize(f"{job.title} {job.location} {job.description}")
     return not any(word in text for word in _REMOTE_WORDS)
+
+
+# The site a job page lives on, from its address: (host ending, name shown). First match wins.
+_SITES = (
+    ("linkedin.com", "LinkedIn"), ("indeed.com", "Indeed"), ("ashbyhq.com", "Ashby"), ("greenhouse.io", "Greenhouse"),
+    ("grnh.se", "Greenhouse"), ("lever.co", "Lever"), ("workable.com", "Workable"), ("recruitee.com", "Recruitee"),
+    ("teamtailor.com", "Teamtailor"), ("myworkdayjobs.com", "Workday"), ("bamboohr.com", "BambooHR"),
+    ("breezy.hr", "Breezy"), ("smartrecruiters.com", "SmartRecruiters"), ("personio.de", "Personio"),
+    ("careers-page.com", "Careers-page"), ("join.com", "JOIN"), ("oraclecloud.com", "Oracle"),
+    ("news.ycombinator.com", "Hacker News"), ("himalayas.app", "Himalayas"), ("jobicy.com", "Jobicy"),
+    ("remoteok.com", "Remote OK"), ("remotive.com", "Remotive"), ("arbeitnow.com", "Arbeitnow"),
+    ("arbeitnow.co.uk", "Arbeitnow"), ("weworkremotely.com", "We Work Remotely"), ("workingnomads.com", "Working Nomads"),
+)
+
+
+def page_site(url: str) -> str:
+    """Where the job page is: a job board or hiring platform by name, else "Company site"."""
+    host = urlsplit(url or "").hostname or ""
+    return next((name for end, name in _SITES if host == end or host.endswith("." + end)), "Company site")
 
 
 RUN_LATE_AFTER = time(10, 0)  # the run starts at 08:30 and takes a few minutes
