@@ -15,6 +15,7 @@ A job-search assistant I run every day. It collects offers, scores them against 
 - **Dashboard:** key numbers, the funnel from offer to interview, offers per day, score spread, sources, and what needs me now. It warns when the daily run is missing.
 - **Offers:** every open offer from any day, best first, with search and filters. Each card shows why it fits, the gaps, and one button for the next step.
 - **Applied and Pipeline:** what I sent, when, and which ones are due a follow-up.
+- **Inbox:** every hour it reads the emails that name a company in my pipeline and moves the application to received, interview, offer or rejected. Each change shows on the job's card, on Applied and on the Dashboard with the email it came from, and can be undone. Other emails never reach Claude, and the mailbox is opened read-only.
 - When a form can't be read, such as LinkedIn Easy Apply, it looks for the same role on the company's own job board, and still tailors the CV so I can apply by hand.
 
 ## Keeping the output honest

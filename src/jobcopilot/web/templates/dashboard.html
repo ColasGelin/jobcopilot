@@ -24,6 +24,24 @@
         <div class="kpi"><p>{{ label }}</p><strong>{{ value }}</strong><span>{{ hint }}</span></div>
       {% endfor %}
     </div>
+    {% if mail_check or mail_changes %}
+    <section class="panel inbox">
+      <h2 class="panel-title">From your inbox
+        <small>{% if not mail_check %}not checked yet{% elif mail_check.error %}<span class="has-problem">check failed {{ mail_check.checked_at.strftime("%d %b, %H:%M") }}: {{ mail_check.error }}</span>{% else %}checked {{ mail_check.checked_at.strftime("%d %b, %H:%M") }}{% endif %}</small></h2>
+      {% for c in mail_changes %}
+        {% set current = mail_info(c.job_id) %}
+        <div class="inbox-item{% if c.undone_at %} undone{% endif %}">
+          <span class="badge status-{{ c.to_status }}">{{ c.from_status | capitalize }} → {{ c.to_status | capitalize }}</span>
+          <div><b>{{ c.company }}</b> · {{ c.title }}
+            <small>{{ c.received_at.strftime("%d %b") }} · {{ c.subject }}{% if c.evidence %} — “{{ c.evidence }}”{% endif %}</small></div>
+          {% if c.undone_at %}<small>Undone</small>
+          {% elif current and current.message_id == c.message_id %}<button class="button small" hx-post="/mail/{{ c.message_id | urlencode }}/undo">Undo</button>{% endif %}
+        </div>
+      {% else %}
+        <p class="empty">No status changes from emails yet.</p>
+      {% endfor %}
+    </section>
+    {% endif %}
     <div class="dash-grid">
       <section class="panel span-2">
         <h2 class="panel-title">From offer to interview</h2>

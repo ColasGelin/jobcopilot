@@ -23,10 +23,22 @@ def should_run(
     return True
 
 
-def loop(run_once: Callable[[], None], state: Callable[[], tuple[date | None, datetime | None]], run_at: time) -> None:
-    """Forever: check every minute whether today's run is due, and run it."""
+def periodic_due(now: datetime, last: datetime | None, every: timedelta) -> bool:
+    return last is None or now - last >= every
+
+
+def loop(
+    run_once: Callable[[], None], state: Callable[[], tuple[date | None, datetime | None]], run_at: time,
+    periodic: Callable[[], None] | None = None, every: timedelta | None = None,
+) -> None:
+    """Forever: check every minute whether today's run is due, and run it; run `periodic` every `every` too."""
+    last_periodic: datetime | None = None
     while True:
         last_success_day, last_attempt_at = state()
         if should_run(datetime.now().astimezone(), last_success_day, last_attempt_at, run_at):
             run_once()
+        now = datetime.now().astimezone()
+        if periodic and every and periodic_due(now, last_periodic, every):
+            last_periodic = now
+            periodic()
         _time.sleep(CHECK_EVERY_S)

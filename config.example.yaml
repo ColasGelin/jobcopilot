@@ -11,6 +11,11 @@ max_scored_per_run: 150  # caps Claude usage; extra jobs wait for the next run
 # Applications prepared after each run: form read, CV tailored, answers drafted (Claude, up to max_per_run jobs).
 prepare: {enabled: true, min_score: 75, max_per_run: 10}
 
+# Inbox check (every hour in the daemon, or `jobcopilot mail`): emails that name a company in your pipeline are read
+# by Claude, and the application moves to applied, interview, offer or rejected. Read-only: nothing is marked as read.
+# Gmail: turn on 2-step verification, create an app password, and put it in .env as JOBCOPILOT_IMAP_PASSWORD.
+# mail: {enabled: true, user: you@gmail.com, host: imap.gmail.com, folder: INBOX, lookback_days: 7, check_every_minutes: 60}
+
 sources: [remotive, remoteok, arbeitnow, hn, jobicy, himalayas, workingnomads, wwr, watchlist]
 # Add "linkedin" to sources to search LinkedIn's public listings (no login, via JobSpy, 3-7 s between requests).
 # It goes against LinkedIn's terms; the realistic risk is a temporary IP block, never your account. Example:

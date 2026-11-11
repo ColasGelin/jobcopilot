@@ -84,6 +84,12 @@ details summary { cursor: pointer; color: var(--accent); }
 a.tag { color: var(--accent); }
 .tag.accent { background: var(--accent-soft); color: var(--accent); }
 .tag.warn-tag { background: var(--good-soft); color: var(--good); font-weight: 600; }
+.tag.mail-tag { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.inbox { margin-bottom: 12px; }
+.inbox-item { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.inbox-item > div { flex: 1; min-width: 0; }
+.inbox-item small { display: block; color: var(--muted); overflow-wrap: anywhere; }
+.inbox-item.undone { opacity: .55; }
 .fit { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
 .fit-col { padding: 10px 12px; border-radius: 10px; background: var(--sunken); }
 .fit-col h3 { margin: 0 0 2px; }

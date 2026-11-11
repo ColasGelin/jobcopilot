@@ -71,6 +71,12 @@ CREATE TABLE IF NOT EXISTS sent_answers (
     id INTEGER PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id), question TEXT NOT NULL, answer TEXT NOT NULL,
     source TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS mail_events (
+    message_id TEXT PRIMARY KEY, job_id TEXT REFERENCES jobs(id), outcome TEXT NOT NULL, sender TEXT, subject TEXT,
+    received_at TEXT, evidence TEXT, from_status TEXT, to_status TEXT, from_applied_at TEXT, from_follow_up_at TEXT,
+    created_at TEXT, undone_at TEXT
+);
+CREATE TABLE IF NOT EXISTS mail_checks (id INTEGER PRIMARY KEY CHECK (id = 1), checked_at TEXT, error TEXT);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
     kept INTEGER, scored INTEGER, drafted INTEGER, failed_sources TEXT, error TEXT
@@ -595,6 +601,88 @@ class DB:
     def list_runs(self, limit: int = 30) -> list[tuple[int, Run]]:
         ids = [r[0] for r in self.conn.execute("SELECT id FROM runs ORDER BY started_at DESC, id DESC LIMIT ?", (limit,))]
         return [(i, self.get_run(i)) for i in ids]
+
+    # --- inbox ----------------------------------------------------------------
+    def processed_mail_ids(self) -> set[str]:
+        return {r[0] for r in self.conn.execute("SELECT message_id FROM mail_events")}
+
+    def tracked_applications(self, statuses: tuple[str, ...]) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT j.id AS job_id, j.company, j.title, a.status FROM applications a JOIN jobs j ON j.id = a.job_id"
+            f" WHERE a.status IN ({','.join('?' * len(statuses))})", statuses).fetchall()
+        return [dict(r) for r in rows]
+
+    def record_mail(self, *, message_id: str, sender: str, subject: str, received_at: datetime, job_id: str | None,
+                    outcome: str, evidence: str, to_status: str | None, now: datetime) -> dict | None:
+        """Remember an email once and apply the status it brings. None when it was already recorded."""
+        before = self.conn.execute(
+            "SELECT status, applied_at, next_follow_up_at FROM applications WHERE job_id = ?", (job_id,)).fetchone()
+        try:
+            with self.conn:
+                self.conn.execute(
+                    "INSERT INTO mail_events (message_id, job_id, outcome, sender, subject, received_at, evidence,"
+                    " from_status, to_status, from_applied_at, from_follow_up_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (message_id, job_id, outcome, sender, subject, _iso(received_at), evidence,
+                     before["status"] if before else None, to_status, before["applied_at"] if before else None,
+                     before["next_follow_up_at"] if before else None, _iso(now)),
+                )
+        except sqlite3.IntegrityError:  # recorded by an earlier or concurrent check
+            return None
+        if to_status:  # an application confirmation dates the application from the email
+            self.set_status(job_id, to_status, received_at if to_status == "applied" else now)
+        return self.mail_event(message_id)
+
+    def mail_event(self, message_id: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT e.*, j.company, j.title FROM mail_events e LEFT JOIN jobs j ON j.id = e.job_id WHERE message_id = ?",
+            (message_id,)).fetchone()
+        return self._mail_row(row) if row else None
+
+    def _mail_row(self, row) -> dict:
+        return dict(row) | {"received_at": _dt(row["received_at"]), "created_at": _dt(row["created_at"]),
+                            "undone_at": _dt(row["undone_at"])}
+
+    def mail_changes(self, limit: int = 10) -> list[dict]:
+        """Status changes made from emails, newest first."""
+        rows = self.conn.execute(
+            "SELECT e.*, j.company, j.title FROM mail_events e JOIN jobs j ON j.id = e.job_id"
+            " WHERE e.to_status IS NOT NULL ORDER BY e.created_at DESC, e.received_at DESC LIMIT ?", (limit,)).fetchall()
+        return [self._mail_row(r) for r in rows]
+
+    def latest_mail_change(self, job_id: str) -> dict | None:
+        """The email behind the job's current status, while that status still holds."""
+        row = self.conn.execute(
+            "SELECT e.*, j.company, j.title FROM mail_events e JOIN jobs j ON j.id = e.job_id"
+            " JOIN applications a ON a.job_id = e.job_id"
+            " WHERE e.job_id = ? AND e.to_status = a.status AND e.undone_at IS NULL ORDER BY e.created_at DESC LIMIT 1",
+            (job_id,)).fetchone()
+        return self._mail_row(row) if row else None
+
+    def undo_mail_change(self, message_id: str, now: datetime) -> str | None:
+        """Put the application back as it was before the email. The job id, or None when the status changed since."""
+        row = self.conn.execute(
+            "SELECT e.job_id, e.from_status, e.from_applied_at, e.from_follow_up_at FROM mail_events e"
+            " JOIN applications a ON a.job_id = e.job_id"
+            " WHERE e.message_id = ? AND e.undone_at IS NULL AND e.to_status = a.status", (message_id,)).fetchone()
+        if row is None:
+            return None
+        with self.conn:
+            self.conn.execute(
+                "UPDATE applications SET status = ?, applied_at = ?, next_follow_up_at = ?, updated_at = ? WHERE job_id = ?",
+                (row["from_status"], row["from_applied_at"], row["from_follow_up_at"], _iso(now), row["job_id"]))
+            self.conn.execute("UPDATE mail_events SET undone_at = ? WHERE message_id = ?", (_iso(now), message_id))
+        return row["job_id"]
+
+    def set_mail_check(self, now: datetime, error: str | None) -> None:
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO mail_checks (id, checked_at, error) VALUES (1, ?, ?)"
+                " ON CONFLICT(id) DO UPDATE SET checked_at = excluded.checked_at, error = excluded.error",
+                (_iso(now), error))
+
+    def mail_check(self) -> dict | None:
+        row = self.conn.execute("SELECT checked_at, error FROM mail_checks WHERE id = 1").fetchone()
+        return {"checked_at": _dt(row[0]), "error": row[1]} if row else None
 
     # --- companies to check ---------------------------------------------------
     def company_checks(self) -> dict[str, datetime]:

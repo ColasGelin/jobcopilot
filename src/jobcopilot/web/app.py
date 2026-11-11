@@ -111,6 +111,7 @@ def create_app(
     templates.env.globals["command_info"] = lambda app_id: db().latest_command(app_id)
     templates.env.globals["apply_url"] = lambda job_id: db().apply_url(job_id)
     templates.env.globals["has_record"] = lambda job_id: db().has_sent_record(job_id)
+    templates.env.globals["mail_info"] = lambda job_id: db().latest_mail_change(job_id)
 
     def progress_info(job_id: str) -> dict:
         """What the progress strip shows: the steps of a job and the one thing to do next."""
@@ -221,8 +222,16 @@ def create_app(
         return templates.TemplateResponse(
             request, "dashboard.html",
             {**stats, "run": runs[0][1] if runs else None, "warning": run_warning(store.last_success_day(), clock()),
-             "min_score": min_score, "active": "dashboard"},
+             "min_score": min_score, "mail_changes": store.mail_changes(), "mail_check": store.mail_check(),
+             "active": "dashboard"},
         )
+
+    @app.post("/mail/{message_id:path}/undo")
+    def undo_mail(request: Request, message_id: str):
+        require_htmx(request)
+        if db().undo_mail_change(message_id, clock()) is None:
+            raise HTTPException(409, "the status changed since this email; set it on the card instead")
+        return Response(status_code=200, headers={"HX-Refresh": "true"})
 
     @app.get("/today", response_class=HTMLResponse)
     def today(request: Request, day: str | None = None, all: bool = False, show: str = "all"):

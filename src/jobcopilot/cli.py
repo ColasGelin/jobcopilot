@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 import typer
@@ -87,6 +88,42 @@ def _run(home: Path) -> int:
         typer.echo(f"Failed sources: {', '.join(result.failed_sources)}")
     typer.echo(f"Report: {report}")
     return 0
+
+
+def _check_mail(home: Path) -> int:
+    """Read the inbox once and move applications forward. Returns the process exit code."""
+    from jobcopilot.mail import check_mail, fetch
+
+    settings = load_settings(home / "config.yaml")
+    mail, now = settings.mail, datetime.now().astimezone()
+    if not mail.enabled:
+        typer.echo("Mail checking is off. Set mail.enabled and mail.user in config.yaml.")
+        return 1
+    db = DB(settings.db_path)
+    password = os.environ.get("JOBCOPILOT_IMAP_PASSWORD", "")
+    if not mail.user or not password:
+        db.set_mail_check(now, "mail.user or JOBCOPILOT_IMAP_PASSWORD is not set")
+        typer.echo("Set mail.user in config.yaml and JOBCOPILOT_IMAP_PASSWORD in .env.")
+        return 1
+    try:
+        mails = fetch(mail.host, mail.user, password, mail.folder, (now - timedelta(days=mail.lookback_days)).date(),
+                      db.processed_mail_ids(), now)
+        changes = check_mail(db, mails, ClaudeCodeClient(timeout_s=settings.llm.timeout_s), settings.llm.score_model, now)
+    except Exception as e:  # shown on the dashboard; the password never appears in imaplib errors
+        db.set_mail_check(now, f"{type(e).__name__}: {e}"[:300])
+        typer.echo(f"Mail check failed: {e!r}")
+        return 1
+    db.set_mail_check(now, None)
+    for c in changes:
+        typer.echo(f"{c['company']} · {c['title']}: {c['from_status']} → {c['to_status']} ({c['subject']})")
+    typer.echo(f"Mail checked: {len(mails)} new emails, {len(changes)} status changes.")
+    return 0
+
+
+@app.command()
+def mail(ctx: typer.Context):
+    """Read the inbox and move applications forward (received, interview, offer, rejected)."""
+    raise typer.Exit(_check_mail(ctx.obj))
 
 
 @app.command()
@@ -197,8 +234,16 @@ def daemon(ctx: typer.Context, at: str = typer.Option("08:30", help="Daily run t
         except Exception as e:  # keep the daemon alive; the run row already records the error
             typer.echo(f"Run crashed: {e!r}")
 
-    typer.echo(f"jobcopilot daemon: daily run at {run_at.strftime('%H:%M')} (checks every minute)")
-    loop(run_once, state, run_at)
+    def mail_once():
+        try:
+            _check_mail(home)
+        except Exception as e:  # keep the daemon alive
+            typer.echo(f"Mail check crashed: {e!r}")
+
+    every = timedelta(minutes=settings.mail.check_every_minutes) if settings.mail.enabled else None
+    typer.echo(f"jobcopilot daemon: daily run at {run_at.strftime('%H:%M')} (checks every minute)"
+               + (f", inbox every {settings.mail.check_every_minutes} min" if every else ""))
+    loop(run_once, state, run_at, periodic=mail_once if every else None, every=every)
 
 
 @app.command()

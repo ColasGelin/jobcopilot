@@ -44,14 +44,41 @@ def test_cli_daemon_starts_loop_with_schedule(monkeypatch, tmp_path):
     from datetime import time
     captured = {}
 
-    def fake_loop(run_once, state, run_at):
+    def fake_loop(run_once, state, run_at, periodic=None, every=None):
         captured["run_at"] = run_at
         captured["state"] = state()
+        captured["every"] = every
 
     monkeypatch.setattr(cli, "loop", fake_loop)
     result = RUNNER.invoke(cli.app, ["--home", str(home_with_profile(tmp_path)), "daemon", "--at", "07:45"])
     assert result.exit_code == 0, result.output
-    assert captured == {"run_at": time(7, 45), "state": (None, None)}
+    assert captured == {"run_at": time(7, 45), "state": (None, None), "every": None}  # inbox off by default
+
+
+def test_cli_daemon_checks_the_inbox_when_enabled(monkeypatch, tmp_path):
+    from datetime import timedelta
+    captured = {}
+
+    def fake_loop(run_once, state, run_at, periodic=None, every=None):
+        captured["every"], captured["periodic"] = every, periodic
+
+    home = home_with_profile(tmp_path)
+    (home / "config.yaml").write_text("mail: {enabled: true, user: me@example.com, check_every_minutes: 30}\n")
+    monkeypatch.setattr(cli, "loop", fake_loop)
+    result = RUNNER.invoke(cli.app, ["--home", str(home), "daemon"])
+    assert result.exit_code == 0, result.output
+    assert captured["every"] == timedelta(minutes=30) and captured["periodic"] is not None
+    assert "inbox every 30 min" in result.output
+
+
+def test_cli_mail_without_password_records_the_problem(monkeypatch, tmp_path):
+    from jobcopilot.db import DB
+    home = home_with_profile(tmp_path)
+    (home / "config.yaml").write_text("mail: {enabled: true, user: me@example.com}\n")
+    monkeypatch.delenv("JOBCOPILOT_IMAP_PASSWORD", raising=False)
+    result = RUNNER.invoke(cli.app, ["--home", str(home), "mail"])
+    assert result.exit_code == 1 and "JOBCOPILOT_IMAP_PASSWORD" in result.output
+    assert "JOBCOPILOT_IMAP_PASSWORD is not set" in DB(home / "jobs.db").mail_check()["error"]
 
 
 def test_cli_daemon_rejects_bad_time(tmp_path):

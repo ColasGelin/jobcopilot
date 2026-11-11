@@ -90,6 +90,17 @@ class PrepareSettings(BaseModel):
     max_per_run: int = 10
 
 
+class MailSettings(BaseModel):
+    """The inbox read every hour to move applications forward. The password comes from JOBCOPILOT_IMAP_PASSWORD."""
+
+    enabled: bool = False
+    host: str = "imap.gmail.com"
+    user: str = ""
+    folder: str = "INBOX"
+    lookback_days: int = 7
+    check_every_minutes: int = 60
+
+
 class Settings(BaseModel):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     top_n: int = 10
@@ -105,6 +116,7 @@ class Settings(BaseModel):
     # Caps LLM usage when a source (e.g. a new watchlist) brings many jobs at once; the rest wait for the next run.
     max_scored_per_run: int = 150
     prepare: PrepareSettings = Field(default_factory=PrepareSettings)
+    mail: MailSettings = Field(default_factory=MailSettings)
     # Used only when "linkedin" is in `sources` (off by default: it goes against LinkedIn's terms).
     linkedin_searches: list[BoardSearch] = Field(default_factory=lambda: [
         BoardSearch(term="AI engineer", location="Málaga, Spain"),
