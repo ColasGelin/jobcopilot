@@ -89,3 +89,32 @@ def test_never_clicks_a_submit_named_apply(page):
     from jobcopilot.apply.browser import _click_apply
     page.goto(url("submit_apply.html"))
     assert _click_apply(page) is False and page.evaluate("window.sub") is False
+
+
+@pytest.mark.parametrize("name,labels", [
+    ("apply_position.html", ["Email"]),  # a longer label, and a link to another page
+    ("apply_overlay.html", ["Full name"]),  # a cookie banner covers the button
+    ("apply_new_tab.html", ["Email"]),  # the form opens in a new tab
+    ("apply_late.html", ["Why us?", "Email"]),  # the form arrives in an iframe seconds after the click
+])
+def test_reveals_forms_behind_an_apply_button(page, name, labels):
+    snap = read_page(page, url(name))
+    assert isinstance(snap, FormSnapshot), snap
+    assert sorted(f.label for f in snap.fields) == sorted(labels)
+    assert len(page.context.pages) == 1  # a new tab is closed once read
+
+
+def test_never_clicks_sign_in_or_send_buttons(page):
+    assert read_page(page, url("apply_not_reveal.html")) == NeedsYou(reason="No application form found")
+    assert page.evaluate("window.clicked") == []
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Apply", True), ("Apply for Position", True), ("  Apply\n now ", True), ("Aplicar a esta oferta", True),
+    ("Postuler à cette offre", True), ("I'm interested", True), ("Apply with LinkedIn", False), ("Apply via Indeed", False),
+    ("Enviar solicitud", False), ("Submit application", False), ("Applying tips for juniors and how to write a CV that stands out", False),
+    ("Read more", False),
+])
+def test_reveal_labels(text, expected):
+    from jobcopilot.apply.browser import _is_reveal
+    assert _is_reveal(text) is expected
