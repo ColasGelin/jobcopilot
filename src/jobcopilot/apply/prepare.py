@@ -222,5 +222,5 @@ class Preparer:
             return f"Tailored CV could not be rendered: {str(e)[:200]}"
         self.settings.cvs_dir.mkdir(parents=True, exist_ok=True)
         (self.settings.cvs_dir / cv_filename(job)).write_bytes(result.pdf)
-        self.db.save_tailored_cv(job.id, content, result.pages, model, TAILOR_PROMPT_VERSION)
+        self.db.save_tailored_cv(job.id, result.content, result.pages, model, TAILOR_PROMPT_VERSION)
         return None

@@ -38,6 +38,7 @@ class CvContent(BaseModel):
     other: list[str] = []
     interests: list[str] = []
     section_titles: dict[str, dict[str, str]] = {}
+    density: int = 0  # 0 = normal layout; higher = tighter spacing, set when the CV had to fit on one page
 
 
 def project_item(p: Project, text: str | None = None) -> ProjectItem:

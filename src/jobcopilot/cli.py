@@ -271,16 +271,16 @@ def serve(
     uvicorn.run(app_, host=host, port=port)
 
 
-def _write_pdf(path: Path, content) -> int:
+def _write_pdf(path: Path, content):
     from jobcopilot.cv.render import render_pdf
 
     result = render_pdf(content)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(result.pdf)
     typer.echo(f"CV: {path}")
-    if result.pages > 1:
-        typer.echo(f"Warning: {result.pages} pages. Trim the main items in cv.yaml.")
-    return result.pages
+    if result.removed:
+        typer.echo("Shortened to fit one page, removed: " + "; ".join(result.removed))
+    return result
 
 
 @app.command()
@@ -315,8 +315,8 @@ def cv(ctx: typer.Context, job: str = typer.Option(None, help="Job id: tailor th
     except LLMError as e:
         typer.echo(f"Claude is unavailable: {e}")
         raise typer.Exit(1)
-    pages = _write_pdf(settings.cvs_dir / cv_filename(target), content)
-    db.save_tailored_cv(job, content, pages, settings.llm.draft_model, TAILOR_PROMPT_VERSION)
+    result = _write_pdf(settings.cvs_dir / cv_filename(target), content)
+    db.save_tailored_cv(job, result.content, result.pages, settings.llm.draft_model, TAILOR_PROMPT_VERSION)
 
 
 @app.command()

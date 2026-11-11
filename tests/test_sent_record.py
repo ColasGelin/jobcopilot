@@ -163,3 +163,16 @@ def test_job_page_opens_before_anything_is_prepared(home):
     assert r.headers["HX-Refresh"] == "true" and db.status(job.id) == "shortlisted"
     assert c.post(f"/jobs/{job.id}/applied").headers["HX-Redirect"]  # applied by hand, nothing prepared
     assert db.sent_record(job.id)["answers"] == []
+
+
+def test_sent_cv_is_rendered_exactly_as_sent(home, monkeypatch):
+    from jobcopilot.web import app as web_app
+
+    tmp, job, db = home
+    seed_app(db, job.id)
+    db.save_tailored_cv(job.id, main_content(load_bank(tmp / "cv.yaml")), 1, "m", "v")
+    db.set_status(job.id, "applied", NOW)
+    calls, real = [], web_app.render_pdf
+    monkeypatch.setattr(web_app, "render_pdf", lambda content, one_page=True: calls.append(one_page) or real(content, one_page))
+    assert client(tmp).get(f"/jobs/{job.id}/sent/cv.pdf").status_code == 200
+    assert calls == [False]  # never shortened after the fact

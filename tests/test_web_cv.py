@@ -179,7 +179,7 @@ def test_tailor_missing_bank_message(home):
     assert r.status_code == 200 and "cv.yaml" in r.text and llm.calls == []
 
 
-def test_fragment_warns_when_two_pages(home):
+def test_two_page_answer_is_saved_as_one_page(home):
     tmp, job = home
     long = GOOD | {"experience": [
         {"id": "acme", "bullets": [{"source_id": b, "text": "Built things. " * 60} for b in ("acme.rag", "acme.mcp", "acme.k8s", "acme.ui")]},
@@ -187,7 +187,10 @@ def test_fragment_warns_when_two_pages(home):
     ]}
     c, _, _ = client(tmp, [long])
     r = c.post(f"/jobs/{job.id}/cv")
-    assert "2 pages" in r.text or "3 pages" in r.text
+    assert r.status_code == 200 and " pages" not in r.text
+    content, pages, _ = DB(tmp / "jobs.db").latest_tailored_cv(job.id)
+    assert pages == 1 and sum(len(e.bullets) for e in content.experience) < 8
+    assert [len(e.bullets) >= 1 for e in content.experience] == [True, True]
 
 
 def test_cv_assets_serves_fonts_and_rejects_traversal(home):
@@ -212,3 +215,23 @@ def test_cv_links_download_instead_of_opening(home):
     fragment = c.post(f"/jobs/{job.id}/cv").text
     assert f'href="/jobs/{job.id}/cv.pdf"' in fragment and f'href="/jobs/{job.id}/cv"' not in fragment
     assert c.get(f"/jobs/{job.id}/cv.pdf").headers["content-disposition"].startswith("attachment")
+
+
+def test_tailor_saves_the_one_page_version(home, monkeypatch):
+    """The stored CV is what the PDF shows: the shortened content, not Claude's longer answer."""
+    from jobcopilot.cv.render import RenderResult
+    from jobcopilot.web import app as web_app
+
+    tmp, job = home
+    real = web_app.render_pdf
+
+    def shortened(content, one_page=True):
+        fitted = content.model_copy(update={"experience": content.experience[:1]})
+        return RenderResult(pdf=real(fitted).pdf, pages=1, content=fitted, removed=["bullet in Beta"])
+
+    monkeypatch.setattr(web_app, "render_pdf", shortened)
+    c, _, _ = client(tmp, [GOOD])
+    assert c.post(f"/jobs/{job.id}/cv").status_code == 200
+    content, pages, _ = DB(tmp / "jobs.db").latest_tailored_cv(job.id)
+    assert pages == 1 and [e.company for e in content.experience] == [content.experience[0].company]
+    assert "Built FastAPI services." not in c.get(f"/jobs/{job.id}/cv").text

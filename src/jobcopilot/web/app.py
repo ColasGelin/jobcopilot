@@ -411,7 +411,7 @@ def create_app(
             if cvs_dir is not None:
                 cvs_dir.mkdir(parents=True, exist_ok=True)
                 (cvs_dir / cv_filename(job)).write_bytes(result.pdf)
-            store.save_tailored_cv(job_id, content, result.pages, draft_model, TAILOR_PROMPT_VERSION)
+            store.save_tailored_cv(job_id, result.content, result.pages, draft_model, TAILOR_PROMPT_VERSION)
             return cv_fragment(request, job_id)
         finally:
             app.state.tailor_lock.release()
@@ -569,7 +569,7 @@ def create_app(
         job, record = record_or_404(job_id)
         if record["cv"] is None:
             raise HTTPException(404, "no CV was saved with this application")
-        return pdf_response(render_pdf(record["cv"]).pdf, record["cv"], job.company)
+        return pdf_response(render_pdf(record["cv"], one_page=False).pdf, record["cv"], job.company)  # exactly as sent
 
     @app.post("/jobs/{job_id}/sent/answers", response_class=HTMLResponse)
     def sent_add(request: Request, job_id: str, question: str = Form(""), answer: str = Form("")):
