@@ -46,6 +46,7 @@ button:disabled { opacity: .5; cursor: default; }
 .primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .primary:hover { filter: brightness(1.08); border-color: var(--accent); }
 button.copy { font-size: 11px; padding: 1px 8px; }
+.answer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 input, textarea { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 details summary { cursor: pointer; color: var(--accent); }

@@ -95,8 +95,12 @@ def test_application_page_shows_answers_problems_and_ai_ban(home):
     page = c.get(f"/jobs/{job.id}/application")
     assert page.status_code == 200
     for text in ("Please do not use AI to write your answers.", "alex@example.com", "I built a RAG assistant.",
-                 "AWS not in the source", "Tailored CV", "Left for you", "Fill the form on my Mac", "I applied: save what I sent"):
+                 "AWS not in the source", "Tailored CV", "Left for you", "Open the form ↗", "I applied: save what I sent"):
         assert text in page.text
+    assert "Fill the form" not in page.text and f'href="{job.url}" target="_blank"' in page.text
+    answers = db.answers(db.prepared_for_job(job.id).id)
+    for a in answers:  # each written answer and profile fact can be copied; files and left fields can't
+        assert (f'data-copy="final-{a.id}"' in page.text) is (a.kind in ("open", "fact")), a.kind
     assert c.get("/jobs/nope/application").status_code == 404
 
 
@@ -187,7 +191,7 @@ def test_read_next_step_offered_after_fill_and_try_again_when_stuck(home):
     app = seed_app(db, job.id, status="filled")
     c, _ = client(tmp)
     page = c.get(f"/jobs/{job.id}/application").text
-    assert "next page" in page and "Fill the form again" in page and f'hx-post="/applications/{app}/open"' in page
+    assert "next page" in page and "Open the form ↗" in page and f'hx-post="/applications/{app}/open"' in page
     db.update_prepared(app, NOW, status="reading")
     assert "Read the form again" in c.get(f"/jobs/{job.id}/application").text
 

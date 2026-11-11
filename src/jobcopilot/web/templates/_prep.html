@@ -12,7 +12,7 @@
     <p class="state"><span class="badge applied">Applied</span> Nothing left to do here.</p>
   {% else %}
     <p class="state">
-      {% if app.status == "ready" %}<span class="badge ready">Application ready</span> Check the answers below, then fill the form.
+      {% if app.status == "ready" %}<span class="badge ready">Application ready</span> Check each answer below, copy the ones you want and paste them into the form.
       {% elif app.status == "filled" %}<span class="badge filled">Filled</span> Check the window on your Mac and submit there yourself.
       {% elif app.status == "needs_you" %}<span class="badge needs">Needs you</span> {{ app.reason }}
       {% else %}<span class="badge">Preparing…</span> This takes 1–2 minutes.{% endif %}
@@ -20,10 +20,8 @@
     <div class="actions">
       {% if waiting %}
         <button class="primary" hx-post="/applications/{{ app.id }}/continue" {{ target | safe }}>I'm done in the window: read the form</button>
-      {% elif app.status == "ready" %}
-        <button class="primary" hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill the form on my Mac</button>
-      {% elif app.status == "filled" %}
-        <button hx-post="/applications/{{ app.id }}/fill" hx-include="#answers-{{ app.id }}" {{ target | safe }}>Fill the form again</button>
+      {% elif app.status in ("ready", "filled") %}
+        {% set form_link = safe_url(form_url(job_id) or "") %}{% if form_link %}<a class="button primary" href="{{ form_link }}" target="_blank" rel="noopener noreferrer">Open the form ↗</a>{% endif %}
       {% elif app.status == "needs_you" %}
         {% set form_link = safe_url(form_url(job_id) or "") %}{% if form_link %}<a class="button primary" href="{{ form_link }}" target="_blank" rel="noopener noreferrer">Open the application page ↗</a>{% endif %}
       {% endif %}

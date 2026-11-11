@@ -41,7 +41,7 @@
       {% if items %}<section class="panel"><h2 class="panel-title">{{ title }}</h2>{% endif %}
       {% for a in items %}
         <div class="answer kind-{{ a.kind }}">
-          <label for="final-{{ a.id }}">{{ a.label or a.field_key }}</label>
+          <div class="answer-head"><label for="final-{{ a.id }}">{{ a.label or a.field_key }}</label>{% if a.kind in ("open", "fact") %}<button type="button" class="copy" data-copy="final-{{ a.id }}">Copy</button>{% endif %}</div>
           {% set autosave = 'hx-post="/answers/' ~ a.id ~ '" hx-trigger="change, keyup changed delay:1s" hx-swap="none"' %}
           {% if a.kind == "open" %}
             <textarea id="final-{{ a.id }}" name="final-{{ a.id }}" rows="6" {{ autosave | safe }}>{{ a.final }}</textarea>
@@ -71,7 +71,7 @@
       <a class="button" href="/jobs/{{ job.id }}/sent">What I sent</a>
     {% else %}
       <p class="state">Submit the form yourself. Then click below: your answers, cover letter and CV are saved as a record you can read later.</p>
-      <button class="{{ "primary" if app and app.status == "filled" else "" }}" hx-post="/jobs/{{ job.id }}/applied">I applied: save what I sent</button>
+      <button class="{{ "primary" if app and app.status in ("ready", "filled") else "" }}" hx-post="/jobs/{{ job.id }}/applied">I applied: save what I sent</button>
     {% endif %}
   </section>
   {% if m and m.draft %}

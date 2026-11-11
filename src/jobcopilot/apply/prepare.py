@@ -79,6 +79,8 @@ class Preparer:
                 self.db.update_prepared(app_id, now, status="needs_you", reason=explain(url, result.reason))
                 self._cv_without_form(job)
                 return self.db.get_prepared(app_id)
+            if result.url != url and not self.db.apply_url(job_id):  # the form has a page of its own: open that one
+                self.db.set_apply_url(job_id, result.url)
             self.db.delete_answers(app_id)  # a re-read replaces the earlier answers
             self.db.update_prepared(app_id, now, status="drafting", reason=None, form=result)
             return self._draft(app_id, job, result, result.fields, now)

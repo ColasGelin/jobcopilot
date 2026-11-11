@@ -118,3 +118,20 @@ def test_never_clicks_sign_in_or_send_buttons(page):
 def test_reveal_labels(text, expected):
     from jobcopilot.apply.browser import _is_reveal
     assert _is_reveal(text) is expected
+
+
+def test_goes_to_the_platform_form_page_when_the_job_page_has_none(page, monkeypatch):
+    from jobcopilot.apply import browser
+    seen = []
+    monkeypatch.setattr(browser, "platform_form_url", lambda u, html: seen.append(u) or url("apply_target.html"))
+    snap = read_page(page, url("noform.html"))
+    assert isinstance(snap, FormSnapshot) and [f.label for f in snap.fields] == ["Email"]
+    assert snap.url.endswith("apply_target.html") and seen == [url("noform.html")]
+
+
+def test_the_candidates_window_is_never_navigated(page, monkeypatch):
+    from jobcopilot.apply import browser
+    monkeypatch.setattr(browser, "platform_form_url", lambda u, html: url("apply_target.html"))
+    page.goto(url("noform.html"))
+    assert read_page(page, "", click_apply=False) == NeedsYou(reason="No application form found")
+    assert page.url.endswith("noform.html")

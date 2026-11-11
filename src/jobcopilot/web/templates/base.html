@@ -48,7 +48,8 @@
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-copy]");
       if (!btn) return;
-      const text = document.getElementById(btn.dataset.copy).innerText;
+      const el = document.getElementById(btn.dataset.copy);
+      const text = el.matches("input, textarea") ? el.value : el.innerText;  // a box copies what is typed in it now
       navigator.clipboard.writeText(text).then(() => {
         btn.textContent = "Copied";
         setTimeout(() => (btn.textContent = "Copy"), 1200);

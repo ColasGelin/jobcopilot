@@ -9,6 +9,7 @@ import re
 from importlib import resources
 
 from jobcopilot.apply.models import FormField, FormSnapshot, NeedsYou
+from jobcopilot.apply.platforms import form_url as platform_form_url
 
 PAGE_TEXT_LIMIT = 20_000
 LABEL_LIMIT = 150
@@ -127,4 +128,10 @@ def read_page(page, url: str, click_apply: bool = True) -> FormSnapshot | NeedsY
     result = classify(_extract(page), page.url)
     if isinstance(result, NeedsYou) and result.reason == NO_FORM and click_apply and _click_apply(page):
         result = _wait_for_form(page)
+    if isinstance(result, NeedsYou) and result.reason == NO_FORM and click_apply:
+        # The platform keeps the form on a page of its own (Teamtailor, Workable, Ashby, Lever, Recruitee).
+        target = platform_form_url(page.url, page.content())
+        if target and target != page.url:
+            page.goto(target, timeout=LOAD_TIMEOUT_MS, wait_until="domcontentloaded")
+            result = _wait_for_form(page)
     return result

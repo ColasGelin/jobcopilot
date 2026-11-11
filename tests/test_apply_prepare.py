@@ -76,6 +76,23 @@ def test_existing_tailored_cv_is_reused(env):
     assert len(llm.calls) == 3  # no second tailoring
 
 
+def test_form_found_on_its_own_page_is_saved_for_the_job(env):
+    tmp, db, *_, jobs = env
+    form_page = FORM.model_copy(update={"url": "https://jobs/1/applications/new"})
+    p, _, _ = preparer(env, [TAILORED, DRAFT], read=lambda job: form_page)
+    assert p.prepare_job(jobs[0].id, NOW).status == "ready"
+    assert db.apply_url(jobs[0].id) == "https://jobs/1/applications/new" and db.form_url(jobs[0].id) == "https://jobs/1/applications/new"
+
+
+def test_a_pasted_form_link_is_never_replaced(env):
+    tmp, db, *_, jobs = env
+    db.set_apply_url(jobs[0].id, "https://mine/apply")
+    form_page = FORM.model_copy(update={"url": "https://elsewhere/form"})
+    p, _, _ = preparer(env, [TAILORED, DRAFT], read=lambda job: form_page)
+    p.prepare_job(jobs[0].id, NOW)
+    assert db.apply_url(jobs[0].id) == "https://mine/apply"
+
+
 def test_prepare_job_needs_you_records_reason(env):
     _, db, *_, jobs = env
     p, llm, _ = preparer(env, [TAILORED], read=lambda job: NeedsYou(reason="Sign-in or account creation required"))
