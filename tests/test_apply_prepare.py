@@ -392,3 +392,69 @@ def test_cv_failure_keeps_the_needs_you_reason(env):
     p, _, _ = preparer(env, [LLMError("boom")], read=lambda job: NeedsYou(reason="No application form found"))
     app = p.prepare_job(jobs[0].id, NOW)
     assert app.status == "needs_you" and app.reason == "No application form found"
+
+
+# --- a page the candidate saved and uploaded ----------------------------------
+
+def saved(url="https://www.linkedin.com/jobs/view/42/", form=FORM, text="AI Engineer at Saved Co. " * 20):
+    from jobcopilot.apply.saved_page import SavedPage
+    return SavedPage(url=url, title="AI Engineer | Saved Co", text=text, form=form)
+
+
+NAMES = {"company": "Saved Co", "title": "AI Engineer", "location": "Remote", "remote": True, "salary_text": ""}
+
+
+def test_saved_page_adds_scores_and_drafts_its_form(env):
+    _, db, *_ = env
+    url = "https://www.linkedin.com/jobs/view/42/"
+    job_id = make_job(0, url=url).id
+    score = {"results": [{"job_id": job_id, "score": 70, "fit_reasons": "ok", "gaps": "none"}]}
+    p, llm, reads = preparer(env, [NAMES, score, TAILORED, DRAFT])
+    p.read_saved = lambda html: saved(form=FORM.model_copy(update={"url": ""}))
+    assert p.add_page("<html>", NOW) == (job_id, None)
+    job = db.get_job(job_id)
+    assert (job.company, job.title, job.source) == ("Saved Co", "AI Engineer", "manual")
+    assert db.match(job_id).evaluation.score == 70
+    app = db.prepared_for_job(job_id)
+    assert app.status == "ready" and app.form.url == url and reads == []  # drafted from the file, the link never opened
+    assert {a.field_key for a in db.answers(app.id)} == {"email", "why", "cv"}
+
+
+def test_saved_page_for_a_known_job_keeps_it_and_takes_the_fuller_text(env):
+    _, db, *_, jobs = env
+    p, llm, reads = preparer(env, [TAILORED, DRAFT])
+    p.read_saved = lambda html: saved(url="", text="Full offer text. " * 100)
+    assert p.add_page("<html>", NOW, job_id=jobs[1].id) == (jobs[1].id, None)
+    assert db.get_job(jobs[1].id).description.startswith("Full offer text.")
+    assert db.prepared_for_job(jobs[1].id).status == "ready" and reads == []
+    assert len(llm.calls) == 2  # no naming or scoring: the job already exists
+
+
+def test_saved_page_link_given_wins_over_the_file(env):
+    _, db, *_, jobs = env
+    p, llm, _ = preparer(env, [TAILORED, DRAFT])
+    p.read_saved = lambda html: saved(url="https://elsewhere/page")
+    assert p.add_page("<html>", NOW, link=jobs[0].url) == (jobs[0].id, None)
+
+
+def test_saved_page_without_address_asks_for_the_link(env):
+    p, llm, _ = preparer(env, [])
+    p.read_saved = lambda html: saved(url="")
+    job_id, error = p.add_page("<html>", NOW)
+    assert job_id is None and "paste the offer's link" in error and llm.calls == []
+
+
+def test_saved_page_without_form_still_tailors_the_cv(env):
+    _, db, *_, jobs = env
+    p, llm, _ = preparer(env, [TAILORED])
+    p.read_saved = lambda html: saved(form=NeedsYou(reason="No application form found"))
+    assert p.add_page("<html>", NOW, job_id=jobs[0].id) == (jobs[0].id, None)
+    app = db.prepared_for_job(jobs[0].id)
+    assert app.status == "needs_you" and "no form to fill" in app.reason
+    assert db.latest_tailored_cv(jobs[0].id) is not None
+
+
+def test_saved_page_that_cannot_be_read_is_reported(env):
+    p, llm, _ = preparer(env, [])
+    p.read_saved = lambda html: NeedsYou(reason="Browser not installed on the server")
+    assert p.add_page("<html>", NOW) == (None, "Browser not installed on the server")

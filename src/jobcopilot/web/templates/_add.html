@@ -1,7 +1,21 @@
-<form class="add-job" id="add-job" hx-post="/jobs/add" hx-target="#add-job" hx-swap="outerHTML"
+<div id="add-job">
+<form class="add-job" hx-post="/jobs/add" hx-target="#add-job" hx-swap="outerHTML"
       hx-indicator="#add-ind" hx-disabled-elt="find button">
   <input type="url" name="url" placeholder="Paste a job offer's link to prepare it (CV, answers…)" value="{{ url or '' }}" required>
   <button>Add</button>
   <span class="htmx-indicator muted-text" id="add-ind">Reading the offer, scoring, preparing… (2–3 min)</span>
   {% if error %}<p class="errors">{{ error }}</p>{% endif %}
 </form>
+<details class="links"{% if page_error %} open{% endif %}>
+  <summary>Page the link can't open (LinkedIn Easy Apply, sign-in)? Upload it saved</summary>
+  <form class="add-job" hx-post="/jobs/add-page" hx-target="#add-job" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+        hx-indicator="#add-page-ind" hx-disabled-elt="find button">
+    <input type="file" name="page" accept=".html,.htm,text/html" aria-label="Saved page (.html)" required>
+    <input type="url" name="link" aria-label="The offer's link, if the file doesn't say" placeholder="The offer's link (only if asked)" value="{{ link or '' }}">
+    <button>Prepare from the page</button>
+    <span class="htmx-indicator muted-text" id="add-page-ind">Reading the page, scoring, preparing… (2–3 min)</span>
+    <p class="muted-text">In your browser, open the offer (with the application form showing if there is one), then File &gt; Save Page As… &gt; Webpage, Complete. Upload the .html file. Its scripts don't run and nothing on it is loaded from the web.</p>
+    {% if page_error %}<p class="errors">{{ page_error }}</p>{% endif %}
+  </form>
+</details>
+</div>

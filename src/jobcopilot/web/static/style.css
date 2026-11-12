@@ -268,3 +268,9 @@ details.more h3 { font-size: 13px; margin: 14px 0 6px; }
 .add-answer { display: grid; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
 .add-answer h3 { margin: 0; font-size: 13px; }
 .add-answer button { justify-self: start; }
+#add-job details.links { margin: -8px 0 16px; font-size: 13px; }
+#add-job details.links form { margin: 6px 0 0; }
+.outreach-row { padding: 12px 0; border-top: 1px solid var(--border); display: grid; gap: 6px; }
+.outreach-row:first-of-type { border-top: 0; }
+.outreach-row p { margin: 0; }
+.outreach-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

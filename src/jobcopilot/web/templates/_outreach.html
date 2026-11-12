@@ -1,0 +1,24 @@
+<div class="outreach-row" id="outreach-{{ job.id }}">
+  <div><b>{{ job.company }}</b> · {{ job.title }} <a class="muted-text" href="/jobs/{{ job.id }}/application">application</a></div>
+  {% if draft and draft.prompt_version == outreach_version %}
+    <p class="outreach-who">Talk to: <b>{{ draft.contact_hint }}</b></p>
+    <p class="draft" id="outreach-msg-{{ job.id }}">{{ draft.outreach_message }}</p>
+  {% else %}
+    <p class="muted-text">No LinkedIn message for this application yet.</p>
+  {% endif %}
+  <div class="outreach-actions">
+    {% if draft and draft.prompt_version == outreach_version %}
+      <a class="button small" href="{{ linkedin_people(draft.contact_search or job.company ~ ' recruiter') }}" target="_blank" rel="noopener noreferrer"
+         title="Opens LinkedIn's people search; pick the person yourself">Find them on LinkedIn</a>
+      <button class="button small" data-copy="outreach-msg-{{ job.id }}">Copy message</button>
+      <button class="button small" hx-post="/jobs/{{ job.id }}/outreach/done" hx-vals='{"outcome": "sent"}'
+              hx-target="#outreach-{{ job.id }}" hx-swap="outerHTML" title="You sent it: the reminder goes away">Sent</button>
+    {% endif %}
+    <button class="button small" hx-post="/jobs/{{ job.id }}/outreach" hx-target="#outreach-{{ job.id }}" hx-swap="outerHTML"
+            hx-indicator="#outreach-ind-{{ job.id }}" hx-disabled-elt="this">{% if draft and draft.prompt_version == outreach_version %}Write it again{% else %}Write the message{% endif %}</button>
+    <button class="button small" hx-post="/jobs/{{ job.id }}/outreach/done" hx-vals='{"outcome": "skipped"}'
+            hx-target="#outreach-{{ job.id }}" hx-swap="outerHTML" title="No message for this one: the reminder goes away">Skip</button>
+    <span class="htmx-indicator muted-text" id="outreach-ind-{{ job.id }}">Writing… (about 30 s)</span>
+  </div>
+  {% if error %}<p class="errors">{{ error }}</p>{% endif %}
+</div>

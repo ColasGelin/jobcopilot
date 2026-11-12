@@ -34,7 +34,8 @@ class SmartFake(FakeLLMClient):
             import re
             ids = re.findall(r'"job_id": "([0-9a-f]{12})"', prompt)
             return {"results": [{"job_id": i, "score": self.score, "fit_reasons": "ok", "gaps": "none"} for i in ids]}
-        return {"cv_tweaks": ["a", "b"], "cover_note": "cover", "outreach_message": "hi", "contact_hint": "CTO"}
+        return {"cv_tweaks": ["a", "b"], "cover_note": "cover", "outreach_message": "hi", "contact_hint": "CTO",
+                "contact_search": "Acme CTO"}
 
 
 @pytest.fixture

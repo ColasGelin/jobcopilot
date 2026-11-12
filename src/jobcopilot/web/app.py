@@ -6,8 +6,9 @@ import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -15,12 +16,14 @@ from fastapi.templating import Jinja2Templates
 
 from jobcopilot.apply.cover import cover_filename, is_cover_field, render_cover
 from jobcopilot.apply.models import FormSnapshot
+from jobcopilot.apply.saved_page import MAX_BYTES as PAGE_MAX_BYTES
 from jobcopilot.config import CompanyToCheck
 from jobcopilot.cv.bank import BankError, load_bank
 from jobcopilot.cv.content import CvContent, main_content
 from jobcopilot.cv.render import FONTS_DIR, render_html, render_pdf
 from jobcopilot.cv.tailor import TAILOR_PROMPT_VERSION, TailorError, cv_filename, download_name, tailor_cv
 from jobcopilot.db import DB
+from jobcopilot.drafting import DRAFT_PROMPT_VERSION
 from jobcopilot.evals.store import EvalStore
 from jobcopilot.evals.store import report as eval_report
 from jobcopilot.llm import LLMClient, LLMError
@@ -82,6 +85,8 @@ def create_app(
     templates.env.globals["safe_url"] = safe_url
     templates.env.globals["remote_unconfirmed"] = remote_unconfirmed
     templates.env.globals["page_site"] = page_site
+    templates.env.globals["outreach_version"] = DRAFT_PROMPT_VERSION
+    templates.env.globals["linkedin_people"] = lambda words: "https://www.linkedin.com/search/results/people/?" + urlencode({"keywords": words})
 
     def db() -> DB:
         return DB(db_path)  # one connection per request; the daemon writes to the same file
@@ -225,8 +230,34 @@ def create_app(
             request, "dashboard.html",
             {**stats, "run": runs[0][1] if runs else None, "warning": run_warning(store.last_success_day(), clock()),
              "min_score": min_score, "mail_changes": store.mail_changes(), "mail_check": store.mail_check(),
-             "active": "dashboard"},
+             "outreach": store.outreach_due(), "active": "dashboard"},
         )
+
+    def outreach_row(request: Request, job_id: str, error: str | None = None):
+        store = db()
+        return templates.TemplateResponse(request, "_outreach.html",
+                                          {"job": store.get_job(job_id), "draft": store.latest_draft(job_id), "error": error})
+
+    @app.post("/jobs/{job_id}/outreach", response_class=HTMLResponse)
+    def write_outreach(request: Request, job_id: str):
+        require_htmx(request)
+        job_or_404(job_id)
+        if preparer_factory is None:
+            return outreach_row(request, job_id, "Writing messages is not configured.")
+        try:
+            preparer_factory().write_outreach(job_id)
+        except Exception as e:
+            return outreach_row(request, job_id, f"Writing the message failed: {e}")
+        return outreach_row(request, job_id)
+
+    @app.post("/jobs/{job_id}/outreach/done")
+    def outreach_done(request: Request, job_id: str, outcome: str = Form(...)):
+        require_htmx(request)
+        job_or_404(job_id)
+        if outcome not in ("sent", "skipped"):
+            raise HTTPException(400, f"unknown outcome {outcome!r}")
+        db().set_outreach(job_id, outcome, clock())
+        return Response(status_code=200)  # the reminder's row is replaced by nothing
 
     @app.post("/mail/{message_id:path}/undo")
     def undo_mail(request: Request, message_id: str):
@@ -627,6 +658,46 @@ def create_app(
         if error:
             return problem(error)
         return Response(status_code=200, headers={"HX-Redirect": f"/jobs/{job_id}/application"})
+
+    def saved_html(upload: UploadFile) -> tuple[str | None, str | None]:
+        """(the file's HTML, None), or (None, what is wrong with the upload)."""
+        if not (upload.filename or "").lower().endswith((".html", ".htm")):
+            return None, "Choose the .html file your browser saved (File > Save Page As…, format \"Webpage, Complete\")."
+        data = upload.file.read(PAGE_MAX_BYTES + 1)
+        if len(data) > PAGE_MAX_BYTES:
+            return None, f"The file is larger than {PAGE_MAX_BYTES // 1_000_000} MB."
+        return data.decode("utf-8", errors="replace"), None
+
+    def run_add_page(html: str, job_id: str | None, link: str) -> tuple[str | None, str | None]:
+        if preparer_factory is None:
+            return None, "Preparing is not configured."
+        if not app.state.prepare_lock.acquire(blocking=False):
+            return None, "Already preparing an application; wait for it to finish."
+        try:
+            return preparer_factory().add_page(html, clock(), job_id=job_id, link=link)
+        except Exception as e:
+            return None, f"Preparing from the saved page failed: {e}"
+        finally:
+            app.state.prepare_lock.release()
+
+    @app.post("/jobs/add-page", response_class=HTMLResponse)
+    def add_page(request: Request, page: UploadFile = File(...), link: str = Form("")):
+        require_htmx(request)
+        html, error = saved_html(page)
+        if html is not None:
+            job_id, error = run_add_page(html, None, link)
+        if error:
+            return templates.TemplateResponse(request, "_add.html", {"page_error": error, "link": link})
+        return Response(status_code=200, headers={"HX-Redirect": f"/jobs/{job_id}/application"})
+
+    @app.post("/jobs/{job_id}/page", response_class=HTMLResponse)
+    def use_page(request: Request, job_id: str, page: UploadFile = File(...)):
+        require_htmx(request)
+        job_or_404(job_id)
+        html, error = saved_html(page)
+        if html is not None:
+            _, error = run_add_page(html, job_id, "")
+        return prep_fragment(request, job_id, [error] if error else None)
 
     @app.post("/jobs/{job_id}/links", response_class=HTMLResponse)
     def use_links(request: Request, job_id: str, apply_url: str = Form(""), role_url: str = Form("")):

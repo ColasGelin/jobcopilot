@@ -23,7 +23,7 @@ FORM = FormSnapshot(url="https://jobs/1", fields=[
 
 class FakePreparer:
     def __init__(self, path):
-        self.path, self.added, self.covers = path, [], []
+        self.path, self.added, self.covers, self.pages = path, [], [], []
 
     def add_job(self, url, now):
         self.added.append(url)
@@ -35,6 +35,12 @@ class FakePreparer:
         app = db.create_prepared(job.id, "ready", now)
         db.update_prepared(app, now, form=FORM)
         return job.id, None
+
+    def add_page(self, html, now, job_id=None, link=""):
+        self.pages.append((html, job_id, link))
+        if "broken" in html:
+            return None, "The file doesn't say which page it was saved from: paste the offer's link too."
+        return job_id or self.add_job(link or "https://www.linkedin.com/jobs/view/7/", now)[0], None
 
     def write_cover(self, job_id, now):
         self.covers.append(job_id)
@@ -76,6 +82,50 @@ def test_add_problem_shown(env):
     r = c.post("/jobs/add", data={"url": "https://bad.example/x"}, headers=HX)
     assert "Page failed to load: 404" in r.text and "HX-Redirect" not in r.headers
     assert c.post("/jobs/add", data={"url": "https://x"}).status_code == 403
+
+
+def page_file(html="<html>Saved offer</html>", name="offer.html"):
+    return {"page": (name, html.encode(), "text/html")}
+
+
+def test_today_has_saved_page_upload(env):
+    c, *_ = env
+    page = c.get("/today").text
+    assert 'hx-post="/jobs/add-page"' in page and 'hx-encoding="multipart/form-data"' in page
+
+
+def test_add_page_redirects_to_the_application(env):
+    c, db, _, _, fake = env
+    r = c.post("/jobs/add-page", files=page_file("<html>café offer</html>"), data={"link": ""}, headers=HX)
+    job_id = make_job(5, url="https://www.linkedin.com/jobs/view/7/").id
+    assert r.status_code == 200 and r.headers["HX-Redirect"] == f"/jobs/{job_id}/application"
+    assert fake.pages == [("<html>café offer</html>", None, "")]
+
+
+def test_add_page_problems_shown_and_link_kept(env):
+    c, _, _, _, fake = env
+    r = c.post("/jobs/add-page", files=page_file("<html>broken</html>"), data={"link": "https://acme.com/1"}, headers=HX)
+    assert "paste the offer&#39;s link too" in r.text and 'value="https://acme.com/1"' in r.text and "HX-Redirect" not in r.headers
+    r = c.post("/jobs/add-page", files=page_file(name="offer.pdf"), headers=HX)
+    assert "Choose the .html file" in r.text and len(fake.pages) == 1  # never handed to the preparer
+    assert c.post("/jobs/add-page", files=page_file()).status_code == 403
+
+
+def test_add_page_refuses_huge_files(env, monkeypatch):
+    import jobcopilot.web.app as web_app
+    monkeypatch.setattr(web_app, "PAGE_MAX_BYTES", 10)
+    c, _, _, _, fake = env
+    r = c.post("/jobs/add-page", files=page_file("x" * 11), headers=HX)
+    assert "larger than" in r.text and fake.pages == []
+
+
+def test_saved_page_for_one_job(env):
+    c, db, app, job, fake = env
+    assert f'hx-post="/jobs/{job.id}/page"' in c.get(f"/jobs/{job.id}/application").text
+    r = c.post(f"/jobs/{job.id}/page", files=page_file(), headers=HX)
+    assert r.status_code == 200 and fake.pages == [("<html>Saved offer</html>", job.id, "")]
+    assert c.post("/jobs/nope/page", files=page_file(), headers=HX).status_code == 404
+    assert c.post(f"/jobs/{job.id}/page", files=page_file()).status_code == 403
 
 
 def test_cover_letter_write_edit_and_pdf(env):

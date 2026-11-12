@@ -90,7 +90,11 @@ def fetch_job(url: str, watchlist: list[WatchlistEntry], http: httpx.Client, llm
     page = page_text(url)
     if isinstance(page, NeedsYou):
         return page
-    title, text = page
+    return job_from_text(url, *page, llm, model)
+
+
+def job_from_text(url: str, title: str, text: str, llm: LLMClient, model: str) -> Job | NeedsYou:
+    """A job from a page's title and visible text: Claude only names it, the description is the text itself."""
     if len(text.strip()) < MIN_TEXT:
         return NeedsYou(reason="The page has almost no text (a sign-in page or a closed offer?)")
     try:

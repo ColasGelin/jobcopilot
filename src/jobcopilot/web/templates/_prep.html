@@ -48,13 +48,20 @@
   {% endif %}
   {% if not app or app.status != "applied" %}
   <details class="links"{% if app and app.status == "needs_you" %} open{% endif %}>
-    <summary>Wrong or missing form? Paste its link</summary>
+    <summary>Wrong or missing form? Paste its link or upload the saved page</summary>
     <form hx-post="/jobs/{{ job_id }}/links" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML"
           hx-indicator="#links-ind-{{ job_id }}" hx-disabled-elt="find button">
       <input type="url" name="apply_url" aria-label="Application page (the form)" placeholder="Application page (the form)" value="{{ apply_url(job_id) }}" required>
       <input type="url" name="role_url" aria-label="Role page, only if it's a different page" placeholder="Role page, only if it's a different page">
       <button>Prepare from this link</button>
       <span class="htmx-indicator muted-text" id="links-ind-{{ job_id }}">Reading the pages and preparing… (1–2 min)</span>
+    </form>
+    <form hx-post="/jobs/{{ job_id }}/page" hx-target="#prep-{{ job_id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+          hx-indicator="#page-ind-{{ job_id }}" hx-disabled-elt="find button">
+      <input type="file" name="page" accept=".html,.htm,text/html" aria-label="Saved page (.html)" required>
+      <button>Prepare from a saved page</button>
+      <span class="htmx-indicator muted-text" id="page-ind-{{ job_id }}">Reading the page and preparing… (1–2 min)</span>
+      <p class="muted-text">The link needs a sign-in (LinkedIn Easy Apply)? Open the form in your browser, then File &gt; Save Page As… &gt; Webpage, Complete, and upload the .html file.</p>
     </form>
   </details>
   {% endif %}

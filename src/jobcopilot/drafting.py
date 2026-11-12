@@ -9,11 +9,12 @@ from jobcopilot.llm import LLMClient, LLMError, LLMUnavailable
 from jobcopilot.models import Draft, Evaluation, Job
 from jobcopilot.scoring import RETRY_SUFFIX, load_prompt
 
-DRAFT_PROMPT_VERSION = "draft_v1"
+DRAFT_PROMPT_VERSION = "draft_v2"
 DESCRIPTION_LIMIT = 6000
-# Prompt asks for 120 / 70 words; allow a little slack before forcing a retry.
+# Prompt asks for 120 words; allow a little slack before forcing a retry.
 MAX_COVER_WORDS = 140
-MAX_OUTREACH_WORDS = 85
+# The outreach is a LinkedIn connection note, which LinkedIn cuts at 300 characters (the prompt asks for 280).
+MAX_OUTREACH_CHARS = 300
 
 SCHEMA = {
     "type": "object",
@@ -22,8 +23,9 @@ SCHEMA = {
         "cover_note": {"type": "string"},
         "outreach_message": {"type": "string"},
         "contact_hint": {"type": "string"},
+        "contact_search": {"type": "string"},
     },
-    "required": ["cv_tweaks", "cover_note", "outreach_message", "contact_hint"],
+    "required": ["cv_tweaks", "cover_note", "outreach_message", "contact_hint", "contact_search"],
 }
 
 
@@ -32,6 +34,7 @@ class _DraftResponse(BaseModel):
     cover_note: str
     outreach_message: str
     contact_hint: str
+    contact_search: str
 
     @field_validator("cover_note")
     @classmethod
@@ -43,8 +46,8 @@ class _DraftResponse(BaseModel):
     @field_validator("outreach_message")
     @classmethod
     def _outreach_length(cls, v: str) -> str:
-        if len(v.split()) > MAX_OUTREACH_WORDS:
-            raise ValueError(f"outreach_message has {len(v.split())} words; maximum is 70")
+        if len(v) > MAX_OUTREACH_CHARS:
+            raise ValueError(f"outreach_message has {len(v)} characters; LinkedIn allows {MAX_OUTREACH_CHARS}")
         return v
 
 

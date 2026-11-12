@@ -11,6 +11,7 @@ from jobcopilot.apply.ai_policy import find_ai_ban, find_ai_policy_field
 from jobcopilot.apply.draft import APPLY_PROMPT_VERSION, CV_WORDS, has_word, draft_answers, fallback_answers
 from jobcopilot.apply.models import FormField, FormSnapshot, NeedsYou, PreparedApp
 from jobcopilot.apply.resolve import explain
+from jobcopilot.apply.saved_page import SavedPage, read_saved_page
 from jobcopilot.apply.voice import load_voice
 from jobcopilot.config import Profile, Settings
 from jobcopilot.cv.bank import Bank, BankError
@@ -31,12 +32,11 @@ class Preparer:
     bank_loader: Callable[[], Bank]
     fetch: Callable[[str], Job | NeedsYou] | None = None  # a job from a pasted link (apply/fetch.py)
     resolve: Callable[[Job], str | None] | None = None  # the same role on the company's own board (apply/resolve.py)
+    read_saved: Callable[[str], SavedPage | NeedsYou] = read_saved_page  # a page the candidate saved (apply/saved_page.py)
 
     def add_job(self, url: str, now: datetime) -> tuple[str | None, str | None]:
         """A job from a link the candidate pasted: stored, scored and prepared whatever its score.
         Returns (job id, None), or (None, why it could not be added)."""
-        from jobcopilot.scoring import score_jobs
-
         known = self.db.get_job(Job(url=url.strip(), source="manual", company="", title="").id)
         if known is not None:
             self.prepare_job(known.id, now)
@@ -44,14 +44,53 @@ class Preparer:
         job = self.fetch(url) if self.fetch else NeedsYou(reason="Adding jobs by link is not configured.")
         if isinstance(job, NeedsYou):
             return None, job.reason
-        self.db.insert_jobs([job], now)
-        try:
-            evaluations, _ = score_jobs([job], self.profile, self.llm, self.settings.llm.score_model)
-            for e in evaluations:
-                self.db.save_evaluation(e)
-        except LLMError as e:  # unscored is fine: the candidate chose this job
-            log.warning("scoring %s failed: %s", job.id, e)
+        self._insert_and_score(job, now)
         self.prepare_job(job.id, now)
+        return job.id, None
+
+    def add_page(self, html: str, now: datetime, job_id: str | None = None, link: str = "") -> tuple[str | None, str | None]:
+        """A page the candidate saved and uploaded (Easy Apply, a page behind a sign-in). With `job_id` it belongs to
+        that job; otherwise to the job at `link`, or at the address the file was saved from, added and scored when new.
+        Its form is drafted from the file; a page without one still gets a tailored CV.
+        Returns (job id, None), or (None, why it could not be added)."""
+        from jobcopilot.apply.fetch import DESCRIPTION_LIMIT, job_from_text
+
+        page = self.read_saved(html)
+        if isinstance(page, NeedsYou):
+            return None, page.reason
+        if job_id is not None:
+            job = self.db.get_job(job_id)
+            if job is None:
+                raise ValueError(f"unknown job {job_id!r}")
+        else:
+            url = link.strip() or page.url
+            if not url.lower().startswith(("http://", "https://")):
+                return None, "The file doesn't say which page it was saved from: paste the offer's link too."
+            job = self.db.get_job(Job(url=url, source="manual", company="", title="").id)
+            if job is None:
+                job = job_from_text(url, page.title, page.text, self.llm, self.settings.llm.score_model)
+                if isinstance(job, NeedsYou):
+                    return None, job.reason
+                self._insert_and_score(job, now)
+        if len(page.text) > len(job.description):  # the saved page is the fuller copy of the offer
+            self.db.set_description(job.id, page.text[:DESCRIPTION_LIMIT])
+            job = self.db.get_job(job.id)
+        app_id = self._start(job.id, now)
+        try:
+            if isinstance(page.form, NeedsYou):
+                self.db.update_prepared(app_id, now, status="needs_you",
+                                        reason=f"The saved page has no form to fill ({page.form.reason}): apply by hand")
+                self._cv_without_form(job)
+                return job.id, None
+            form = page.form.model_copy(update={"url": page.form.url or self.db.form_url(job.id) or job.url})
+            self.db.delete_answers(app_id)
+            self.db.update_prepared(app_id, now, status="drafting", reason=None, form=form)
+            self._draft(app_id, job, form, form.fields, now)
+        except LLMUnavailable:
+            raise
+        except Exception as e:  # never leave it "reading"/"drafting": the card would wait forever
+            log.exception("preparing %s from a saved page failed", job.id)
+            self.db.update_prepared(app_id, now, status="needs_you", reason=f"Preparing failed: {str(e)[:200] or repr(e)}")
         return job.id, None
 
     def prepare_job(self, job_id: str, now: datetime) -> PreparedApp:
@@ -62,11 +101,7 @@ class Preparer:
         existing = self.db.prepared_for_job(job_id)
         if existing and not self._retryable(existing, now):
             return existing
-        if existing:
-            app_id = existing.id
-            self.db.update_prepared(app_id, now, status="reading")
-        else:
-            app_id = self.db.create_prepared(job_id, "reading", now)
+        app_id = self._start(job_id, now)
         try:
             url = self.db.form_url(job_id) or job.url
             result = self.read(job.model_copy(update={"url": url}))
@@ -128,6 +163,15 @@ class Preparer:
                                             candidate=self.profile.summary, answers=answers)
         self.db.save_cover_letter(job_id, text, problems, model, COVER_PROMPT_VERSION, now)
 
+    def write_outreach(self, job_id: str) -> None:
+        """Draft (or redo) the LinkedIn note to send someone at the company after applying, and who that is."""
+        from jobcopilot.drafting import draft_application
+
+        match = self.db.match(job_id)
+        if match is None:
+            raise ValueError(f"unknown job {job_id!r}")
+        self.db.save_draft(draft_application(match.job, match.evaluation, self.profile, self.llm, self.settings.llm.draft_model))
+
     def ingest(self, app_id: int, form: FormSnapshot, now: datetime) -> PreparedApp:
         """A form step read on the Mac (after a sign-in or a "Next"): add it as the next step and draft it."""
         app = self.db.get_prepared(app_id)
@@ -164,6 +208,25 @@ class Preparer:
         return done
 
     # --- internals -------------------------------------------------------------
+    def _insert_and_score(self, job: Job, now: datetime) -> None:
+        from jobcopilot.scoring import score_jobs
+
+        self.db.insert_jobs([job], now)
+        try:
+            evaluations, _ = score_jobs([job], self.profile, self.llm, self.settings.llm.score_model)
+            for e in evaluations:
+                self.db.save_evaluation(e)
+        except LLMError as e:  # unscored is fine: the candidate chose this job
+            log.warning("scoring %s failed: %s", job.id, e)
+
+    def _start(self, job_id: str, now: datetime) -> int:
+        """The job's application, (re)started as "reading"."""
+        existing = self.db.prepared_for_job(job_id)
+        if existing:
+            self.db.update_prepared(existing.id, now, status="reading")
+            return existing.id
+        return self.db.create_prepared(job_id, "reading", now)
+
     def _draft(self, app_id: int, job: Job, form: FormSnapshot, fields: list[FormField], now: datetime) -> PreparedApp:
         try:
             bank = self.bank_loader()

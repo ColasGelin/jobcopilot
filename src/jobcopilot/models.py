@@ -43,6 +43,7 @@ class Draft(BaseModel):
     contact_hint: str
     model: str
     prompt_version: str
+    contact_search: str = ""  # words for LinkedIn's people search that find the person to message
 
 
 class Run(BaseModel):

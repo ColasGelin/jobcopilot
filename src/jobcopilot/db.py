@@ -77,6 +77,9 @@ CREATE TABLE IF NOT EXISTS mail_events (
     created_at TEXT, undone_at TEXT
 );
 CREATE TABLE IF NOT EXISTS mail_checks (id INTEGER PRIMARY KEY CHECK (id = 1), checked_at TEXT, error TEXT);
+CREATE TABLE IF NOT EXISTS outreach (
+    job_id TEXT PRIMARY KEY REFERENCES jobs(id), outcome TEXT NOT NULL, done_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, fetched INTEGER, new INTEGER,
     kept INTEGER, scored INTEGER, drafted INTEGER, failed_sources TEXT, error TEXT
@@ -112,6 +115,12 @@ class DB:
                 self.conn.execute("ALTER TABLE jobs ADD COLUMN apply_url TEXT")
                 self.conn.commit()
             except sqlite3.OperationalError:  # the other container added it first
+                pass
+        if "contact_search" not in {r[1] for r in self.conn.execute("PRAGMA table_info(drafts)")}:  # added with outreach reminders
+            try:
+                self.conn.execute("ALTER TABLE drafts ADD COLUMN contact_search TEXT NOT NULL DEFAULT ''")
+                self.conn.commit()
+            except sqlite3.OperationalError:
                 pass
         for row in self.conn.execute(  # applications made before records existed
             "SELECT job_id, applied_at FROM applications WHERE applied_at IS NOT NULL"
@@ -156,7 +165,7 @@ class DB:
                 self.conn.executemany(
                     f"DELETE FROM {table} WHERE app_id IN (SELECT id FROM prepared_apps WHERE job_id = ?)", [(i,) for i in job_ids]
                 )
-            for table, col in (("sent_answers", "job_id"), ("sent_records", "job_id"), ("cover_letters", "job_id"), ("prepared_apps", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
+            for table, col in (("sent_answers", "job_id"), ("sent_records", "job_id"), ("cover_letters", "job_id"), ("prepared_apps", "job_id"), ("outreach", "job_id"), ("tailored_cvs", "job_id"), ("drafts", "job_id"), ("evaluations", "job_id"), ("applications", "job_id"), ("jobs", "id")):
                 self.conn.executemany(f"DELETE FROM {table} WHERE {col} = ?", [(i,) for i in job_ids])
 
     def get_job(self, job_id: str) -> Job | None:
@@ -222,14 +231,15 @@ class DB:
     def save_draft(self, d: Draft) -> None:
         with self.conn:
             self.conn.execute(
-                "INSERT INTO drafts (job_id, cv_tweaks, cover_note, outreach_message, contact_hint, model, prompt_version)"
-                " VALUES (?,?,?,?,?,?,?)",
-                (d.job_id, json.dumps(d.cv_tweaks), d.cover_note, d.outreach_message, d.contact_hint, d.model, d.prompt_version),
+                "INSERT INTO drafts (job_id, cv_tweaks, cover_note, outreach_message, contact_hint, contact_search, model,"
+                " prompt_version) VALUES (?,?,?,?,?,?,?,?)",
+                (d.job_id, json.dumps(d.cv_tweaks), d.cover_note, d.outreach_message, d.contact_hint, d.contact_search,
+                 d.model, d.prompt_version),
             )
 
     def latest_draft(self, job_id: str) -> Draft | None:
         row = self.conn.execute(
-            "SELECT job_id, cv_tweaks, cover_note, outreach_message, contact_hint, model, prompt_version"
+            "SELECT job_id, cv_tweaks, cover_note, outreach_message, contact_hint, contact_search, model, prompt_version"
             " FROM drafts WHERE job_id = ? ORDER BY id DESC LIMIT 1",
             (job_id,),
         ).fetchone()
@@ -518,6 +528,22 @@ class DB:
             (_iso(now),),
         ).fetchall()
         return [(self.get_job(r["job_id"]), _dt(r["next_follow_up_at"])) for r in rows]
+
+    # --- LinkedIn outreach after applying --------------------------------------
+    def outreach_due(self) -> list[tuple[Job, Draft | None]]:
+        """Applications sent whose recruiter hasn't been messaged (or skipped) yet, latest first, with their draft."""
+        rows = self.conn.execute(
+            "SELECT job_id FROM applications WHERE status = 'applied'"
+            " AND job_id NOT IN (SELECT job_id FROM outreach) ORDER BY applied_at DESC"
+        ).fetchall()
+        return [(self.get_job(r["job_id"]), self.latest_draft(r["job_id"])) for r in rows]
+
+    def set_outreach(self, job_id: str, outcome: str, now: datetime) -> None:
+        if outcome not in ("sent", "skipped"):
+            raise ValueError(f"unknown outreach outcome {outcome!r}")
+        with self.conn:
+            self.conn.execute("INSERT OR REPLACE INTO outreach (job_id, outcome, done_at) VALUES (?, ?, ?)",
+                              (job_id, outcome, _iso(now)))
 
     # --- dashboard -----------------------------------------------------------
     def _latest_evaluation(self, job_id: str) -> Evaluation | None:

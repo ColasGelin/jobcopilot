@@ -42,6 +42,13 @@
       {% endfor %}
     </section>
     {% endif %}
+    {% if outreach %}
+    <section class="panel outreach">
+      <h2 class="panel-title">Message someone on LinkedIn <span>{{ outreach | length }}</span>
+        <small>for each application sent: find the person, send the note yourself, then mark it sent</small></h2>
+      {% for job, draft in outreach %}{% include "_outreach.html" %}{% endfor %}
+    </section>
+    {% endif %}
     <div class="dash-grid">
       <section class="panel span-2">
         <h2 class="panel-title">From offer to interview</h2>
