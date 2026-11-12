@@ -274,3 +274,4 @@ details.more h3 { font-size: 13px; margin: 14px 0 6px; }
 .outreach-row:first-of-type { border-top: 0; }
 .outreach-row p { margin: 0; }
 .outreach-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.version { color: var(--muted); font-size: 12px; margin: 32px 0 8px; text-align: center; }

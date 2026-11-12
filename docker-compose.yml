@@ -4,7 +4,10 @@
 # Dashboard: published on 127.0.0.1:8077 only; reach it via `LocalForward 8077 localhost:8077` in ~/.ssh/config.
 services:
   jobcopilot:
-    build: .
+    build:
+      context: .
+      additional_contexts:
+        git: ./.git         # the build reads the commit from it for the dashboard footer
     image: jobcopilot:latest
     restart: unless-stopped
     environment:

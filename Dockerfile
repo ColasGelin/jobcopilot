@@ -29,6 +29,8 @@ COPY --chown=app pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --extra browser --no-install-project
 COPY --chown=app src ./src
 RUN uv sync --frozen --no-dev --extra browser && playwright install chromium-headless-shell
+# Commit and build time for the dashboard footer, read from the checkout's .git (mounted for this step, never copied in).
+RUN --mount=type=bind,from=git,target=/tmp/git python -m jobcopilot.version /tmp/git > src/jobcopilot/VERSION
 
 VOLUME ["/data"]
 ENTRYPOINT ["jobcopilot", "--home", "/data"]

@@ -22,6 +22,7 @@ from jobcopilot.cv.bank import BankError, load_bank
 from jobcopilot.cv.content import CvContent, main_content
 from jobcopilot.cv.render import FONTS_DIR, render_html, render_pdf
 from jobcopilot.cv.tailor import TAILOR_PROMPT_VERSION, TailorError, cv_filename, download_name, tailor_cv
+from jobcopilot import version
 from jobcopilot.db import DB
 from jobcopilot.drafting import DRAFT_PROMPT_VERSION
 from jobcopilot.evals.store import EvalStore
@@ -86,6 +87,7 @@ def create_app(
     templates.env.globals["remote_unconfirmed"] = remote_unconfirmed
     templates.env.globals["page_site"] = page_site
     templates.env.globals["outreach_version"] = DRAFT_PROMPT_VERSION
+    templates.env.globals["app_version"] = version.running()
     templates.env.globals["linkedin_people"] = lambda words: "https://www.linkedin.com/search/results/people/?" + urlencode({"keywords": words})
 
     def db() -> DB:

@@ -31,7 +31,8 @@
         {% endfor %}
       </nav>
     </aside>
-    <main class="{% block main_class %}{% endblock %}">{% block content %}{% endblock %}</main>
+    <main class="{% block main_class %}{% endblock %}">{% block content %}{% endblock %}
+      {% if app_version %}<footer class="version">Version {{ app_version }}</footer>{% endif %}</main>
   </div>
   <script>
     // Swap 409 ("already generating") fragments too; other errors keep htmx's default (no swap).
