@@ -6,6 +6,7 @@ import re
 from datetime import date
 
 from jobcopilot.apply.overlap import copied, repeats
+from jobcopilot.apply.style import ai_tells
 from jobcopilot.apply.voice import Voice
 from jobcopilot.config import ApplicationProfile
 from jobcopilot.cv.bank import Bank, Contact
@@ -16,7 +17,7 @@ from jobcopilot.llm import LLMClient, LLMError, LLMUnavailable
 from jobcopilot.models import Job
 from jobcopilot.scoring import RETRY_SUFFIX, load_prompt
 
-COVER_PROMPT_VERSION = "cover_v3"
+COVER_PROMPT_VERSION = "cover_v4"
 MAX_WORDS = 300
 DESCRIPTION_LIMIT = 6000
 SCHEMA = {"type": "object", "properties": {"letter": {"type": "string"}}, "required": ["letter"]}
@@ -71,6 +72,7 @@ def write_cover_letter(job: Job, bank: Bank, profile: ApplicationProfile, voice:
             continue
         problems = _problems(text, bank, profile, job.company, job.description[:DESCRIPTION_LIMIT])
         problems += repeats("cover letter", text, answers) + copied("cover letter", text, job.description)
+        problems += ai_tells("cover letter", text)
         if not problems:
             break
         if attempt == 0:

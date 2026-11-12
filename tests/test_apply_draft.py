@@ -103,6 +103,13 @@ def test_retry_fixes(bank):
     assert len(llm.calls) == 2 and answers[0].problems == []
 
 
+def test_ai_sounding_answer_retried_then_flagged(bank):
+    bad = {"answers": [{"key": "why", "kind": "open", "answer": "I built a RAG assistant — I'm excited to do more."}]}
+    answers, llm = run(bank, [FIELDS[2]], [bad, bad])
+    assert len(llm.calls) == 2 and "long dash" in llm.calls[1][0]
+    assert any("long dash" in p for p in answers[0].problems) and any("i'm excited" in p for p in answers[0].problems)
+
+
 def test_salary_from_profile_allowed_in_open_answer(bank):
     resp = {"answers": [{"key": "why", "kind": "open", "answer": "I expect 45,000 EUR."}]}
     answers, _ = run(bank, [FIELDS[2]], [resp])

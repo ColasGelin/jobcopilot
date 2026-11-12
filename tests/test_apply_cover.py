@@ -35,7 +35,7 @@ def test_writes_in_voice_with_facts_from_bank(bank):
     prompt = llm.calls[0][0]
     for s in ("The most interesting to me is the MCP server.", "LLM Engineer", "Acme", "Nous construisons des agents.", "acme.rag", str(MAX_WORDS)):
         assert s in prompt
-    assert llm.calls[0][2] == "sonnet" and COVER_PROMPT_VERSION == "cover_v3"
+    assert llm.calls[0][2] == "sonnet" and COVER_PROMPT_VERSION == "cover_v4"
 
 
 def test_invented_fact_retried_then_kept_with_problems(bank):
@@ -99,3 +99,11 @@ def test_copying_the_posting_word_for_word_is_flagged(bank):
     letter = {"letter": "Dear Acme team,\n\nI want to design and ship agentic workflows that help our customers automate things.\n\nAlex"}
     (_, problems), llm = write(bank, [letter, letter], description=posting)
     assert any("copies the job posting" in p for p in problems) and len(llm.calls) == 2
+
+
+def test_ai_sounding_letter_is_rewritten_once(bank):
+    tell = {"letter": "Dear Acme team,\n\nThe hard part is not the demo, it's the trust. I built a RAG assistant with LangChain and Qdrant.\n\nAlex Martin"}
+    (text, problems), llm = write(bank, [tell, {"letter": GOOD}])
+    assert len(llm.calls) == 2 and "not X, it's Y" in llm.calls[1][0] and text == GOOD and problems == []
+    (text, problems), _ = write(bank, [tell, tell])  # still there after the retry: kept, with the problem shown
+    assert "not the demo, it's" in problems[0]

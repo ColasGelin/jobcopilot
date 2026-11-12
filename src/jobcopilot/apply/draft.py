@@ -13,6 +13,7 @@ from pydantic import BaseModel, ValidationError
 
 from jobcopilot.apply.models import Answer, FormField, FormSnapshot
 from jobcopilot.apply.overlap import repeats
+from jobcopilot.apply.style import ai_tells
 from jobcopilot.apply.voice import Voice
 from jobcopilot.config import ApplicationProfile
 from jobcopilot.cv.bank import Bank
@@ -148,7 +149,7 @@ def _answer(field: FormField, item: _Item | None, profile: ApplicationProfile, b
     if ai_ban:
         return make("open")
     text = (item.answer or "").strip()
-    problems = check_text(field.label, text, bank, extra_source=" ".join(profile.values().values()))
+    problems = check_text(field.label, text, bank, extra_source=" ".join(profile.values().values())) + ai_tells(field.label, text)
     if field.max_length and len(text) > field.max_length:
         problems.append(f"{field.label}: {len(text)} characters; maximum is {field.max_length}")
     elif not field.max_length and len(text.split()) > word_limit(field):
