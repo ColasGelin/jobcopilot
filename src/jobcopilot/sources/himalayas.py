@@ -11,22 +11,22 @@ SEARCH_URL = "https://himalayas.app/jobs/api/search?"
 
 
 class HimalayasSource:
-    """Remote jobs searched by keyword, restricted to those open to `country`."""
+    """Remote jobs searched by keyword, restricted to those open to one of `countries`."""
 
     name = "himalayas"
 
-    def __init__(self, client: httpx.Client, queries: list[str], country: str):
-        self.client, self.queries, self.country = client, queries, country
+    def __init__(self, client: httpx.Client, queries: list[str], countries: list[str]):
+        self.client, self.queries, self.countries = client, queries, countries
 
     def _location(self, restrictions: list[str]) -> str:
         if not restrictions:
             return ""  # worldwide
-        return self.country if self.country in restrictions else ", ".join(restrictions)
+        return next((c for c in self.countries if c in restrictions), ", ".join(restrictions))
 
     def fetch(self, since: datetime) -> list[Job]:
         jobs: dict[str, Job] = {}
-        for query in self.queries:
-            data = get_json(self.client, SEARCH_URL + urlencode({"q": query, "country": self.country}))
+        for country, query in ((c, q) for c in self.countries for q in self.queries):
+            data = get_json(self.client, SEARCH_URL + urlencode({"q": query, "country": country}))
             try:
                 for item in data["jobs"]:
                     job = Job(

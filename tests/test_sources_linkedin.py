@@ -101,6 +101,19 @@ def test_indeed_searches_spain_and_names_its_jobs():
     assert jobs[0].source == "indeed" and calls[0]["site_name"] == ["indeed"] and calls[0]["country_indeed"] == "spain"
 
 
+def test_indeed_search_can_name_its_own_country():
+    calls = []
+
+    def scrape(**kw):
+        calls.append(kw)
+        return frame([])
+
+    searches = [BoardSearch(term="AI engineer", location="Spain", remote=True),
+                BoardSearch(term="AI engineer", location="France", remote=True, country="france")]
+    IndeedSource(searches, results=25, hours_old=72, country="spain", scrape=scrape).fetch(SINCE)
+    assert [c["country_indeed"] for c in calls] == ["spain", "france"]
+
+
 def test_failed_indeed_search_uses_its_name():
     def scrape(**kw):
         raise RuntimeError("blocked")

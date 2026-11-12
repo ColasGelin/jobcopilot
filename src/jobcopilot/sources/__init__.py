@@ -32,7 +32,7 @@ def build_sources(names: list[str], client: httpx.Client, settings: Settings | N
     for n in names:
         if n == "himalayas":
             queries = settings.himalayas_queries if settings else ["python"]
-            sources.append(HimalayasSource(client, queries, settings.himalayas_country if settings else "Spain"))
+            sources.append(HimalayasSource(client, queries, settings.himalayas_countries if settings else ["Spain"]))
         elif n == "watchlist":
             sources.append(WatchlistSource(client, settings.watchlist if settings else []))
         elif n == "linkedin":

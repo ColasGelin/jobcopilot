@@ -70,6 +70,7 @@ class BoardSearch(BaseModel):
     term: str
     location: str
     remote: bool = False  # ask the board for remote jobs only; it doesn't always say so on the listing
+    country: str | None = None  # Indeed only: the country's Indeed site to search (e.g. france); default indeed_country
 
 
 class CompanyToCheck(BaseModel):
@@ -110,7 +111,7 @@ class Settings(BaseModel):
         default_factory=lambda: ["remotive", "remoteok", "arbeitnow", "hn", "jobicy", "himalayas", "workingnomads", "wwr", "watchlist"]
     )
     himalayas_queries: list[str] = Field(default_factory=lambda: ["python", "AI engineer", "LLM", "machine learning"])
-    himalayas_country: str = "Spain"
+    himalayas_countries: list[str] = Field(default_factory=lambda: ["Spain"])
     watchlist: list[WatchlistEntry] = Field(default_factory=list)
     companies_to_check: list[CompanyToCheck] = Field(default_factory=list)
     # Caps LLM usage when a source (e.g. a new watchlist) brings many jobs at once; the rest wait for the next run.

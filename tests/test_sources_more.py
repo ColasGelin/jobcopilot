@@ -52,21 +52,34 @@ def test_jobicy_requests_europe_dev_jobs():
 
 def test_himalayas_searches_each_query_in_spain():
     seen: list[str] = []
-    src = HimalayasSource(serving({"himalayas.app": "himalayas.json"}, seen), queries=["python", "AI engineer"], country="Spain")
+    src = HimalayasSource(serving({"himalayas.app": "himalayas.json"}, seen), queries=["python", "AI engineer"], countries=["Spain"])
     jobs = src.fetch(ALL)
     assert len(seen) == 2 and all("country=Spain" in u for u in seen)
     assert len(jobs) == 3  # same postings for both queries are de-duplicated by URL
 
 
+def test_himalayas_searches_each_query_in_each_country():
+    seen: list[str] = []
+    src = HimalayasSource(serving({"himalayas.app": "himalayas.json"}, seen), queries=["python", "LLM"], countries=["Spain", "France"])
+    jobs = src.fetch(ALL)
+    assert sorted(u.split("country=")[1] for u in seen) == ["France", "France", "Spain", "Spain"]
+    assert len(jobs) == 3  # the same postings found in both countries are de-duplicated by URL
+
+
 def test_himalayas_location_mapping():
-    jobs = {j.company: j for j in HimalayasSource(serving({"himalayas.app": "himalayas.json"}), ["python"], "Spain").fetch(ALL)}
+    jobs = {j.company: j for j in HimalayasSource(serving({"himalayas.app": "himalayas.json"}), ["python"], ["Spain"]).fetch(ALL)}
     assert jobs["micro1"].location == "" and jobs["micro1"].remote          # worldwide
     assert jobs["lemon.io"].location == "Spain"                              # long list containing Spain
     assert jobs["Logicalis Spain"].location == "Spain"
 
 
+def test_himalayas_location_uses_any_searched_country():
+    jobs = {j.company: j for j in HimalayasSource(serving({"himalayas.app": "himalayas.json"}), ["python"], ["France", "Spain"]).fetch(ALL)}
+    assert jobs["Logicalis Spain"].location == "Spain"  # open to Spain only, found while also searching France
+
+
 def test_himalayas_drops_old_jobs():
-    assert len(HimalayasSource(serving({"himalayas.app": "himalayas.json"}), ["python"], "Spain").fetch(SINCE)) == 2
+    assert len(HimalayasSource(serving({"himalayas.app": "himalayas.json"}), ["python"], ["Spain"]).fetch(SINCE)) == 2
 
 
 # --- Working Nomads ---------------------------------------------------------

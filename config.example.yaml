@@ -25,11 +25,12 @@ sources: [remotive, remoteok, arbeitnow, hn, jobicy, himalayas, workingnomads, w
 # Add "indeed" to sources to search Indeed the same way; scraping goes against Indeed's terms too. `remote: true` asks for
 # remote jobs only: use it for country-wide searches, or on-site jobs in other cities fill the results and get filtered out.
 # indeed_searches: [{term: AI engineer, location: Spain, remote: true}, {term: Python developer, location: "Málaga, Spain"}]
+# A search can name its own Indeed country: {term: AI engineer, location: France, remote: true, country: france}
 # indeed_country: spain
 # indeed_hours_old: 72
 
 himalayas_queries: [python, AI engineer, LLM, machine learning]
-himalayas_country: Spain
+himalayas_countries: [Spain, France]  # remote jobs open to people in these countries
 
 # Companies whose public job boards are checked every run.
 # ats: greenhouse | ashby | lever — slug is the company id in the board URL

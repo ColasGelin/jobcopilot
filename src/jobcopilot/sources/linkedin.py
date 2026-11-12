@@ -40,8 +40,8 @@ class LinkedInSource:
         self.pause_s, self.wait = pause_s, wait
         self.errors: list[str] = []
 
-    def options(self) -> dict:
-        """Extra scrape_jobs arguments of this board."""
+    def options(self, search: BoardSearch) -> dict:
+        """Extra scrape_jobs arguments of this board for one search."""
         return {}
 
     def _scrape(self, **kw):
@@ -62,7 +62,7 @@ class LinkedInSource:
             try:
                 frame = self._scrape(site_name=[self.name], search_term=search.term, location=search.location,
                                      results_wanted=self.results, hours_old=self.hours_old, fetch_description=True, verbose=0,
-                                     **remote, **self.options())
+                                     **remote, **self.options(search))
             except Exception:  # blocked (429) or the board changed: the other searches still run
                 self.errors.append(f"{self.name}:{search.term}")
                 continue

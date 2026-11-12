@@ -44,6 +44,17 @@ def test_rejects_remote_usa():
     assert rejection_reason(job(location="USA"), F) == "location"
 
 
+def test_accepts_remote_france_when_listed():
+    f = F.model_copy(update={"remote_regions": [*F.remote_regions, "France"]})
+    assert rejection_reason(job(location="Remote - France"), f) is None
+    assert rejection_reason(job(location="Remote - France"), F) == "location"
+
+
+def test_rejects_onsite_france_even_when_remote_france_listed():
+    f = F.model_copy(update={"remote_regions": [*F.remote_regions, "France"]})
+    assert rejection_reason(job(remote=False, location="Paris, France"), f) == "location"
+
+
 def test_accepts_malaga_without_accent():
     assert rejection_reason(job(remote=False, location="Malaga, Spain"), F) is None
 

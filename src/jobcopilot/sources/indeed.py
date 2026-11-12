@@ -13,5 +13,5 @@ class IndeedSource(LinkedInSource):
         super().__init__(searches, results, hours_old, **kw)
         self.country = country
 
-    def options(self) -> dict:
-        return {"country_indeed": self.country}
+    def options(self, search) -> dict:
+        return {"country_indeed": search.country or self.country}
